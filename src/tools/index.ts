@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { pingTool } from './ping.js';
 import { issueGetTool } from './issue-get.js';
 import { searchTool } from './search.js';
+import { issueFieldsTool } from './issue-fields.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -32,5 +33,14 @@ export function registerTools(server: McpServer) {
         },
         async (args) => searchTool.handler(args),
 
+    );
+
+    server.registerTool(
+        issueFieldsTool.name,
+        {
+            description: issueFieldsTool.description,
+            inputSchema: issueFieldsTool.inputSchema,
+        },
+        async (args) => issueFieldsTool.handler(args),
     );
 }
