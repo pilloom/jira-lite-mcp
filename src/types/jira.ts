@@ -47,3 +47,21 @@ export interface JiraIssueFieldsResult {
     issueType: string;
     fields: JiraFieldSpec[];
 }
+
+export interface JiraCreateIssueInput {
+    project: string;
+    issueType: string;
+    summary: string;
+    description?: string;
+    parent?: string;
+    assignee?: string;
+    priority?: string;
+    labels?: string[];
+    /** Campos personalizados indexados por nombre visible o por identificador. */
+    customFields?: Record<string, unknown>;
+}
+
+export interface JiraCreatedIssue {
+    key: string;
+    url: string;
+}

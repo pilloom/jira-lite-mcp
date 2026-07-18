@@ -87,7 +87,7 @@ corresponden**.
 | # | Tarea | Fase | Por qué en esta posición |
 |---|---|---|---|
 | 1 | ✅ `jira_issue_fields` | 2 | Prerrequisito de la creación: sin el contrato de campos, crear es adivinar. Lectura pura, sin riesgo. |
-| 2 | `jira_create_issue` | 2 | Consume el contrato de la tarea 1 y valida antes del POST. |
+| 2 | ✅ `jira_create_issue` | 2 | Consume el contrato de la tarea 1 y valida antes del POST. |
 | 3 | `adf.ts` | 0 | Necesario en cuanto se escriben descripciones y se leen issues creados. |
 | 4 | `jira_transition_issue` | 2 | Cierra el ciclo mínimo de trabajo sobre un issue. |
 | 5 | Deuda de `search.ts` / `issues.ts` | 0 | Se corrige cuando estorbe; hoy no bloquea la creación. |
@@ -279,6 +279,40 @@ saber nada de LAN — pero conviene corregir esas guías:
 **Validación previa al POST**, apoyada en el contrato que devuelve `jira_issue_fields`:
 comprobar que están los campos requeridos y que los custom fields existen en ese tipo,
 **antes** de llamar a la API. Evita quemar keys de issue con payloads malformados.
+
+**Estado: completada y verificada contra el Jira real (2026-07-18).**
+
+##### El error ADF: diagnóstico corregido
+
+Las tres guías atribuyen el error *"El valor de la operación debe ser un documento de
+Atlassian"* al converter del MCP oficial, y construyen sobre esa premisa patrones de 2 y 3
+llamadas para crear un issue.
+
+**La premisa es falsa.** El error se reproduce hablando REST v3 directo, sin MCP de por medio:
+
+```
+PUT /rest/api/3/issue/LAN-1755  { "fields": { "customfield_10064": "[ ] texto plano" } }
+→ 400  customfield_10064: El valor de la operación debe ser un documento de Atlassian
+```
+
+No es un bug de ninguna herramienta: es la API rechazando texto plano en un campo que exige
+ADF. `customfield_10064` es de tipo `textarea` (texto rico), no de texto plano.
+
+**Consecuencia:** el problema nunca fue *combinar* campos, sino el *formato del valor*. Con la
+serialización correcta, las tres combinaciones que las guías declaran imposibles funcionan en
+una sola llamada. Verificado creando LAN-1756 con `description` + `parent` +
+`customfield_10064` + `priority` + `labels` simultáneamente.
+
+Esto elimina de raíz el patrón de 2-3 llamadas: no es una limitación que haya que sortear,
+es un diagnóstico equivocado que se propagó por las tres guías.
+
+##### Issues de prueba creados
+
+- **LAN-1755** — `[PRUEBA MCP] Banco de pruebas de jira-lite-mcp`, label `mcp-test`.
+  Reutilizable para sondear formatos vía `PUT` sin consumir claves nuevas.
+- **LAN-1756** — subtarea de LAN-1755, creada con todos los campos en una llamada.
+
+Ambos en `Finalizada`. Coste total de la verificación: 2 claves.
 
 #### 2.2 `jira_transition_issue`
 

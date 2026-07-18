@@ -4,6 +4,7 @@ import { pingTool } from './ping.js';
 import { issueGetTool } from './issue-get.js';
 import { searchTool } from './search.js';
 import { issueFieldsTool } from './issue-fields.js';
+import { createIssueTool } from './create-issue.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -42,5 +43,14 @@ export function registerTools(server: McpServer) {
             inputSchema: issueFieldsTool.inputSchema,
         },
         async (args) => issueFieldsTool.handler(args),
+    );
+
+    server.registerTool(
+        createIssueTool.name,
+        {
+            description: createIssueTool.description,
+            inputSchema: createIssueTool.inputSchema,
+        },
+        async (args) => createIssueTool.handler(args),
     );
 }
