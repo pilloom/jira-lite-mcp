@@ -71,8 +71,9 @@ Opcionalmente `JIRA_DEFAULT_PROJECT` como comodidad para no repetir la key en ca
 - **`src/jira/issues.ts`** tipa `description` como `string | null`, pero la API v3 devuelve un
   **documento ADF** (objeto). Se está tratando un objeto como si fuera texto.
 - **`src/jira/search.ts`** usa `POST /rest/api/3/search/jql`, endpoint que **ya no devuelve
-  `total`** (Atlassian migró a paginación por `nextPageToken`/`isLast`). El `total` que hoy
-  devuelve `jira_search` es casi con seguridad `undefined`.
+  `total`**. **Confirmado empíricamente (2026-07-18):** la respuesta solo trae las claves
+  `issues`, `nextPageToken` e `isLast`. El `total` que devuelve `jira_search` hoy es
+  `undefined`.
 - `createJiraClient()` se instancia en cada llamada. Funciona; **no se toca** hasta que haya
   un motivo real. No es un refactor que el proyecto necesite ahora.
 
@@ -89,7 +90,7 @@ corresponden**.
 | 1 | ✅ `jira_issue_fields` | 2 | Prerrequisito de la creación: sin el contrato de campos, crear es adivinar. Lectura pura, sin riesgo. |
 | 2 | ✅ `jira_create_issue` | 2 | Consume el contrato de la tarea 1 y valida antes del POST. |
 | 3 | `adf.ts` | 0 | Necesario en cuanto se escriben descripciones y se leen issues creados. |
-| 4 | `jira_transition_issue` | 2 | Cierra el ciclo mínimo de trabajo sobre un issue. |
+| 4 | ✅ `jira_transition_issue` | 2 | Cierra el ciclo mínimo de trabajo sobre un issue. |
 | 5 | Deuda de `search.ts` / `issues.ts` | 0 | Se corrige cuando estorbe; hoy no bloquea la creación. |
 | 6 | `jira_my_work`, `project_summary`, `explain_issue` | 1 | Lectura inteligente, una vez el ciclo de escritura funciona. |
 
@@ -316,11 +317,37 @@ Ambos en `Finalizada`. Coste total de la verificación: 2 claves.
 
 #### 2.2 `jira_transition_issue`
 
-- Resuelve la transición **por nombre o por id** consultando
-  `GET /rest/api/3/issue/{key}/transitions`. Nada de ids hardcodeados: son por workflow.
-- Si el nombre no existe, devuelve las transiciones disponibles en el error — respuesta útil
+- Resuelve la transición **por id, por nombre de la transición o por nombre del estado
+  destino**, consultando `GET /rest/api/3/issue/{key}/transitions`. Nada de ids hardcodeados:
+  son por workflow.
+- Si el destino no existe, devuelve las transiciones disponibles en el error — respuesta útil
   para un LLM, que puede reintentar sin intervención.
-- Admite comentario opcional en la misma llamada (la REST lo soporta).
+- Admite comentario opcional.
+
+**Estado: completada y verificada contra el Jira real (2026-07-18).**
+
+##### Por qué se busca también por estado destino
+
+En LAN el nombre de la transición y el del estado al que lleva **no coinciden**: la transición
+se llama `Listo` y el estado resultante es `Finalizada`. Quien usa la herramienta piensa en el
+estado que quiere («pásalo a Finalizada»), no en cómo se llama la flecha del workflow. Buscar
+solo por nombre de transición fallaría en el caso más natural.
+
+##### El comentario va en una llamada aparte, y no por capricho
+
+`POST /issue/{key}/transitions` acepta un comentario en `update.comment`, pero **solo lo
+aplica si el workflow define una pantalla que incluya ese campo**. En LAS CUATRO transiciones
+de LAN no hay pantalla asociada (`transitions.fields` está vacío), y el resultado es el peor
+posible: **la API responde `204` y descarta el comentario sin avisar**.
+
+Verificado: la primera implementación adjuntaba el comentario a la transición, devolvía éxito
+y el comentario nunca aparecía en el issue. Ahora se publica con `POST /issue/{key}/comment`,
+que funciona con independencia del workflow.
+
+> Nota para las guías del equipo: la regla «transiciona sin comentario y comenta aparte»
+> resulta ser **correcta en la práctica**, aunque la razón documentada (error ADF) no lo era.
+> En cambio, la recomendación de la guía de frontend de «usar transiciones con comentarios
+> para mantener historial claro» **no funciona**: esos comentarios se pierden en silencio.
 
 #### 2.3 `jira_add_comment` y `jira_add_worklog`
 
@@ -389,7 +416,31 @@ Al terminar la Fase 2: **12 herramientas**, ninguna acoplada a una instancia con
    repo — que es justo el flujo que se siguió para hallar `customfield_10064`.
    Decisión provisional: exponerla, es barata y habilita el descubrimiento.
 2. **Alcance de la resolución por nombre.** ¿Solo custom fields o también estados y tipos de
-   issue? Empezar por campos; extender si el uso lo pide.
+   issue? El hallazgo sobre JQL (§ siguiente) inclina la balanza hacia extenderlo a los tipos
+   de issue.
+
+### Nombres de tipo de issue: traducidos frente a canónicos
+
+Verificado en LAN (2026-07-18). Un sitio traducido devuelve los tipos con su nombre local,
+pero **JQL solo acepta el nombre canónico en inglés o el id**:
+
+| Nombre mostrado | Válido en JQL | id |
+|---|---|---|
+| Epic | `Epic` | 10000 |
+| Tarea | `Task` | 10007 |
+| Subtarea | `"Sub-task"` | 10008 |
+| Historia | `Story` | 10009 |
+| Error | `Bug` | 10010 |
+
+Lo peligroso es el modo de fallo: `issuetype = Error` **no da error, devuelve cero
+resultados**. Una búsqueda equivocada parece una búsqueda vacía.
+
+En cambio, al **crear** un issue el nombre traducido sí funciona (`issuetype: {name:
+"Subtarea"}` creó LAN-1756). La divergencia afecta solo a JQL.
+
+Implicación para el MCP: cuando una herramienta construya JQL a partir de un tipo de issue
+—`jira_project_summary` al contar bugs, por ejemplo— debe traducir el nombre al canónico o
+usar el id, resolviéndolo contra la instancia. Nunca interpolar el nombre recibido.
 3. **Paginación.** Derivar `total` del resultado o implementar `nextPageToken` completo.
    Depende de si algún flujo necesita más de 100 resultados.
 
