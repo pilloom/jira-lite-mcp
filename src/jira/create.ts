@@ -2,6 +2,7 @@ import { textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { getIssueTypeFields } from './meta.js';
+import { normalizeName } from './names.js';
 
 import type {
     JiraCreateIssueInput,
@@ -20,14 +21,6 @@ interface JiraApiCreatedIssueResponse {
  */
 const FIELDS_HANDLED_BY_SERVER = new Set(['project', 'issuetype', 'reporter']);
 
-function normalize(value: string): string {
-    return value
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '');
-}
-
 /**
  * Localiza un campo por su identificador o por su nombre visible, tolerando
  * diferencias de mayúsculas y acentos: el nombre depende del idioma del sitio.
@@ -36,11 +29,11 @@ function findField(
     fields: JiraFieldSpec[],
     nameOrId: string,
 ): JiraFieldSpec | undefined {
-    const needle = normalize(nameOrId);
+    const needle = normalizeName(nameOrId);
 
     return fields.find(
         (field) =>
-            field.id === nameOrId.trim() || normalize(field.name) === needle,
+            field.id === nameOrId.trim() || normalizeName(field.name) === needle,
     );
 }
 

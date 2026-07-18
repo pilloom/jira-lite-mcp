@@ -65,3 +65,16 @@ export interface JiraCreatedIssue {
     key: string;
     url: string;
 }
+
+export interface JiraTransition {
+    id: string;
+    name: string;
+    /** Estado al que lleva la transición. */
+    to: string;
+}
+
+export interface JiraTransitionResult {
+    key: string;
+    status: string;
+    transition: string;
+}
