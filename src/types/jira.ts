@@ -37,6 +37,69 @@ export interface JiraMyWorkResult {
     issues: JiraWorkItem[];
 }
 
+export interface JiraSubtask {
+    key: string;
+    summary: string;
+    status: string;
+}
+
+export interface JiraLinkedIssue extends JiraSubtask {
+    /** Cómo se lee la relación desde este issue: «blocks», «relates to». */
+    relation: string;
+}
+
+export interface JiraIssueComment {
+    author: string;
+    created: string;
+    body: string;
+}
+
+export interface JiraIssueContext {
+    key: string;
+    summary: string;
+    type: string;
+    status: string;
+    priority: string | null;
+    assignee: string | null;
+    reporter: string | null;
+    created: string;
+    updated: string;
+    labels: string[];
+    parent: JiraSubtask | null;
+    description: string | null;
+    subtasks: JiraSubtask[];
+    links: JiraLinkedIssue[];
+    /** Solo los más recientes; `totalComments` indica cuántos hay. */
+    comments: JiraIssueComment[];
+    totalComments: number;
+    /** Estados a los que se puede mover el issue ahora mismo. */
+    availableTransitions: string[];
+    customFields?: Record<string, string | null>;
+}
+
+export interface JiraStaleIssue {
+    key: string;
+    summary: string;
+    status: string;
+    daysSinceUpdate: number;
+}
+
+export interface JiraProjectSummary {
+    project: string;
+    /** Issues abiertos considerados; parcial si `truncated` es cierto. */
+    openIssues: number;
+    truncated: boolean;
+    byStatus: Record<string, number>;
+    byType: Record<string, number>;
+    byPriority: Record<string, number>;
+    unassigned: number;
+    stale: {
+        days: number;
+        count: number;
+        oldest: JiraStaleIssue[];
+    };
+}
+
 export interface JiraIssueType {
     id: string;
     name: string;

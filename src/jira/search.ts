@@ -66,6 +66,60 @@ export async function runJql<F>(
     }
 }
 
+const PAGE_SIZE = 100;
+
+export interface JqlAllPages<F> {
+    issues: Array<{ key: string; fields: F }>;
+    /** Se alcanzó el tope sin agotar los resultados: el conjunto es parcial. */
+    truncated: boolean;
+}
+
+/**
+ * Recorre todas las páginas de una consulta hasta agotarla o hasta alcanzar el
+ * tope indicado. Necesario para agregar sobre el conjunto completo; el tope
+ * evita recorrer proyectos enormes indefinidamente y, cuando se alcanza, se
+ * informa en lugar de devolver un recuento incompleto como si fuera total.
+ */
+export async function runJqlAll<F>(
+    jql: string,
+    fields: string[],
+    maxIssues: number,
+): Promise<JqlAllPages<F>> {
+    try {
+        const client = createJiraClient();
+
+        const issues: Array<{ key: string; fields: F }> = [];
+
+        let nextPageToken: string | undefined;
+
+        do {
+            const response = await client.post<JiraSearchResponse<F>>(
+                '/rest/api/3/search/jql',
+                {
+                    jql,
+                    maxResults: Math.min(PAGE_SIZE, maxIssues - issues.length),
+                    fields,
+                    ...(nextPageToken !== undefined && { nextPageToken }),
+                },
+            );
+
+            issues.push(...response.data.issues);
+            nextPageToken = response.data.nextPageToken;
+
+            if (response.data.issues.length === 0) {
+                break;
+            }
+        } while (nextPageToken !== undefined && issues.length < maxIssues);
+
+        return {
+            issues,
+            truncated: nextPageToken !== undefined && issues.length >= maxIssues,
+        };
+    } catch (error) {
+        handleJiraError(error);
+    }
+}
+
 export async function searchIssues(
     jql: string,
     limit: number = DEFAULT_LIMIT,

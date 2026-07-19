@@ -168,6 +168,38 @@ function toFieldSpec(field: JiraApiField): JiraFieldSpec {
     return spec;
 }
 
+let fieldCatalog: JiraFieldSpec[] | null = null;
+
+/**
+ * Catálogo de todos los campos de la instancia, para resolver por nombre los
+ * que no aparecen en las pantallas de creación o edición —al leer un issue no
+ * hay un contexto que acote los campos disponibles—.
+ *
+ * Se cachea por proceso: la definición de los campos no cambia durante una
+ * sesión y la consulta devuelve el catálogo entero.
+ */
+export async function getAllFields(): Promise<JiraFieldSpec[]> {
+    if (fieldCatalog !== null) {
+        return fieldCatalog;
+    }
+
+    try {
+        const client = createJiraClient();
+
+        const response = await client.get<
+            Array<Omit<JiraApiField, 'required'> & { id: string }>
+        >('/rest/api/3/field');
+
+        fieldCatalog = response.data.map((field) =>
+            toFieldSpec({ ...field, fieldId: field.id, required: false }),
+        );
+
+        return fieldCatalog;
+    } catch (error) {
+        handleJiraError(error);
+    }
+}
+
 /**
  * Campos que el issue admite al editarse. A diferencia de la pantalla de
  * creación, la API los devuelve indexados por identificador en lugar de como

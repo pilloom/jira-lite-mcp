@@ -32,7 +32,7 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**9 herramientas.** Compila en verde; todas verificadas contra un Jira real.
+**11 herramientas.** Compila en verde; todas verificadas contra un Jira real.
 
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
@@ -45,9 +45,11 @@ parámetro o a la guía del repo consumidor.
 | `jira_link_issues` | ✅ | `links.ts` |
 | `jira_update_issue` | ✅ | `update.ts` |
 | `jira_my_work` | ✅ | `my-work.ts`, `users.ts` |
+| `jira_project_summary` | ✅ | `project-summary.ts` |
+| `jira_explain_issue` | ✅ | `explain.ts` |
 
-**Pendiente:** `jira_project_summary` y `jira_explain_issue` (fase 1), más
-`jira_add_comment` / `jira_add_worklog` (fase 2).
+**Pendiente:** `jira_add_comment` y `jira_add_worklog` (fase 2). **La fase 1 está
+completa.**
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
 > `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
@@ -140,8 +142,8 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 | 6 | `jira_update_issue` | 3 | ✅ promovida por uso real |
 | 7 | **Deuda §5: `adfToText` + `search.ts` + `issues.ts`** | 0 | ✅ |
 | 8 | `jira_my_work` | 1 | ✅ |
-| 9 | `jira_project_summary`, `jira_explain_issue` | 1 | ⏭️ **siguiente** |
-| 10 | `jira_add_comment`, `jira_add_worklog` | 2 | pendiente |
+| 9 | `jira_project_summary`, `jira_explain_issue` | 1 | ✅ |
+| 10 | `jira_add_comment`, `jira_add_worklog` | 2 | ⏭️ **siguiente** |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
 Las tareas 5 y 6 se implementaron porque un ticket real las necesitó.
@@ -288,17 +290,36 @@ ruido.
 Parámetros opcionales: `project`, `limit`, `includeDone`. Sin `project` busca en **todos** los
 proyectos del sitio — verificado con issues de `LAN` e `IB` en la misma respuesta.
 
-#### `jira_project_summary`
+#### ✅ `jira_project_summary`
 
-Abiertos, distribución por estado y tipo, bugs por prioridad, sin asignar, stale. El agregado
-se hace **en nuestra capa** a partir de una búsqueda, no con N llamadas. Sin heurísticas de
-«riesgo»: hechos, y que Claude interprete. **Atención a §7.3** al construir el JQL por tipo.
+Abiertos, reparto por estado, tipo y prioridad, sin asignar y estancados. Sin heurísticas de
+«riesgo»: hechos, y que Claude interprete.
 
-#### `jira_explain_issue`
+**Cómo se esquivó el problema de §7.3.** El JQL filtra solo por proyecto y `statusCategory`;
+el reparto por tipo se cuenta **en nuestra capa** a partir del `issuetype` de cada issue. Al no
+interpolar nunca un nombre de tipo en la consulta, el fallo silencioso de los nombres
+traducidos no puede darse.
 
-El issue **con su contexto en una sola llamada**: descripción en texto plano, subtareas,
-enlaces, comentarios recientes, transiciones disponibles y los custom fields que se pidan por
-nombre. No genera prosa — entrega material limpio para que Claude explique.
+**Agrega sobre el conjunto completo, no sobre una página.** `runJqlAll` recorre las páginas
+con `nextPageToken` hasta un tope de 1000 issues; si se alcanza, lo declara con `truncated`
+en lugar de presentar un recuento parcial como si fuera total.
+
+Verificado en LAN: 207 abiertos en 3 páginas, sin truncar.
+
+#### ✅ `jira_explain_issue`
+
+El issue **con su contexto en dos llamadas paralelas**: descripción en texto plano, padre,
+subtareas, enlaces, comentarios recientes, transiciones disponibles y los campos que se pidan
+por nombre. No genera prosa — entrega material limpio para que Claude explique.
+
+**Aquí apareció el caso de uso del catálogo global de campos.** Al leer un issue no hay
+pantalla que acote los campos disponibles, así que `extraFields` se resuelve contra
+`GET /rest/api/3/field`, cacheado por proceso. Es lo que el plan original preveía para
+`fields.ts` y que hasta ahora no había hecho falta.
+
+**Enlaces deduplicados.** Jira admite enlazar el mismo par de issues en ambos sentidos; con
+una relación simétrica como «relates to» eso produce dos entradas idénticas. Ocurrió de verdad
+entre LAN-1757 y LAN-1754, así que se colapsan por relación y clave.
 
 ### Fase 2 — Escritura restante
 
