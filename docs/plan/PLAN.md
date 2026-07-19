@@ -48,10 +48,14 @@ parámetro o a la guía del repo consumidor.
 **Pendiente:** la deuda de §5, la fase 1 completa (lectura inteligente) y
 `jira_add_comment` / `jira_add_worklog`.
 
-> ⚠️ **Ningún paso se ha verificado en MCP Inspector.** Las herramientas se han probado
-> ejecutando la capa `jira/` directamente contra la API. El registro en `tools/index.ts` está
-> hecho, pero el criterio de calidad «aparece y responde en el Inspector» (§9) sigue **sin
-> cumplirse en ninguna tarea**.
+> ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
+> `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
+> registran, exponen sus esquemas JSON con los parámetros correctos, responden a `tools/call`
+> y propagan los errores como `isError: true` con un mensaje legible.
+>
+> Dos cosas que solo se ven a través del protocolo: el paso de `z.object({...})` como
+> `inputSchema` **funciona** con este SDK (había dudas de si el SDK esperaba un `ZodRawShape`),
+> y la deuda §5 se manifiesta con toda su gravedad — ver la nota de esa sección.
 
 ---
 
@@ -98,6 +102,17 @@ Configuración: **solo** `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`.
 
 > Las deudas 1-3 son el mismo trabajo y **bloquean la fase 1**: `jira_project_summary` se
 > construye sobre la búsqueda y heredaría el `total` roto.
+
+**Comprobado a través del protocolo MCP (2026-07-18), que es como lo verá un LLM:**
+
+- `jira_get_issue LAN-1757` devuelve `description` como **documento ADF en bruto**: cinco
+  párrafos de texto se convierten en un muro de JSON anidado con `type`, `version`, `content`
+  y un nodo por párrafo. Ilegible y caro en tokens para transmitir lo que es texto plano.
+- `jira_search` devuelve **`total: null`**.
+
+Es la peor deuda del proyecto y la que más contradice la tesis de §1 («respuestas optimizadas
+para LLM»): hoy `jira_get_issue` devuelve exactamente el tipo de objeto crudo que este MCP
+existe para evitar.
 
 ---
 
@@ -343,8 +358,9 @@ Al completar lo previsto: **13 herramientas**, ninguna acoplada a una instancia 
    pasando el id.
 2. **Paginación.** Derivar `total` del resultado o implementar `nextPageToken` completo.
    Se decide al abordar la deuda §5.
-3. **Verificación en MCP Inspector.** Sigue sin hacerse en ninguna tarea (§2). Decidir si se
-   incorpora al cierre de cada paso o se hace una pasada única al terminar la fase 1.
+3. ~~**Verificación en MCP Inspector.**~~ ✅ Resuelta: pasada completa el 2026-07-18 (§2). La
+   vía es `--cli`, que no necesita navegador y sirve tanto para `tools/list` como para
+   `tools/call`. Queda como comprobación de cierre de cada fase, no de cada tarea.
 
 ---
 
@@ -352,7 +368,7 @@ Al completar lo previsto: **13 herramientas**, ninguna acoplada a una instancia 
 
 - [ ] `npm run build` sin errores.
 - [ ] Verificada contra un Jira real, no solo compilando.
-- [ ] La tool aparece y responde en MCP Inspector. *(Incumplido hasta ahora — ver §2.)*
+- [ ] La tool aparece y responde en MCP Inspector. *(Pasada completa el 2026-07-18 — §2.)*
 - [ ] La respuesta es legible para un LLM: sin ruido, sin objetos crudos de Jira.
 - [ ] **Nada específico de una instancia en el código** (proyectos, estados, ids de campo,
       ids de transición, workflows).
