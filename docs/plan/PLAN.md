@@ -376,9 +376,26 @@ devuelve cómo quedó realmente el enlace, no cómo se pidió.
 Verificado en ambos sentidos: `LAN-1755 blocks LAN-1756` y `LAN-1755 is blocked by LAN-1756`
 producen enlaces correctos y opuestos.
 
+#### ✅ `jira_update_issue` — promovida por uso real
+
+Igual que la anterior: la pidió el uso. LAN-1757 se creó con los criterios de aceptación
+dentro de la descripción porque el tipo `Error` no exponía el campo; al añadirlo a las
+pantallas hizo falta mover el contenido a su sitio, y no había herramienta para hacerlo.
+
+**Valida contra la pantalla de edición del issue** (`editmeta`), no contra la de creación: no
+son el mismo conjunto de campos. Sin esa comprobación el fallo sería silencioso, porque Jira
+descarta sin avisar lo que no está en la pantalla —el mismo patrón que ya mordió con los
+comentarios en transiciones—.
+
+Reutiliza de `create.ts` la resolución de campos por nombre y la serialización por tipo,
+extraídas a `jira/fields.ts` para no duplicarlas.
+
+Verificado sobre LAN-1757: `description` + `customfield_10064` actualizados **en una sola
+llamada**, otra de las combinaciones que las guías declaraban imposibles.
+
 #### Pendientes sin compromiso
 
-`jira_update_issue`, paginación avanzada en búsquedas. Se evalúan con el uso.
+Paginación avanzada en búsquedas. Se evalúa con el uso.
 
 Cualquier herramienta de flujo compuesto (tipo "empezar trabajo" / "cerrar trabajo") sería
 opinada sobre un workflow concreto y **queda fuera del alcance** de un MCP genérico.
