@@ -40,9 +40,8 @@ JIRA_TOKEN=tu-token
 claude mcp add jira-lite --scope user -- node /ruta/absoluta/a/jira-lite-mcp/dist/server.js
 ```
 
-`--scope user` lo deja disponible en todos los proyectos. Para limitarlo a un repositorio
-concreto, `--scope project` genera un `.mcp.json` que puede compartirse con el equipo; en ese
-caso conviene pasar las credenciales por `--env` en lugar de usar el `.env` local.
+`--scope user` lo deja disponible en todos los proyectos, con las credenciales en el `.env` de
+este repositorio.
 
 Comprobar que responde:
 
@@ -51,6 +50,54 @@ claude mcp get jira-lite
 ```
 
 > Tras cambiar el código hay que ejecutar `npm run build`: el servidor arranca desde `dist/`.
+
+### Registrar en un proyecto concreto (`.mcp.json`)
+
+Para dejarlo declarado en un repositorio y compartirlo con el equipo, se usa el scope
+`project`, que escribe un `.mcp.json` en su raíz:
+
+```bash
+claude mcp add --scope project jira-lite -- node /ruta/absoluta/a/jira-lite-mcp/dist/server.js
+```
+
+El fichero resultante se commitea. Como cada persona clonará este servidor en una ubicación
+distinta, la ruta absoluta conviene sustituirla por una variable con valor por defecto:
+
+```json
+{
+  "mcpServers": {
+    "jira-lite": {
+      "command": "node",
+      "args": ["${JIRA_MCP_PATH:-/ruta/por/defecto}/jira-lite-mcp/dist/server.js"]
+    }
+  }
+}
+```
+
+Cada miembro define `JIRA_MCP_PATH` en su shell y mantiene su propio `.env` en este
+repositorio. No hace falta declarar las credenciales en `.mcp.json`.
+
+Si se prefiere pasarlas desde el cliente, se añaden como variables del servidor:
+
+```json
+"env": {
+  "JIRA_URL": "${JIRA_URL}",
+  "JIRA_EMAIL": "${JIRA_EMAIL}",
+  "JIRA_TOKEN": "${JIRA_TOKEN}"
+}
+```
+
+> ⚠️ Nunca escribir el token literal: `.mcp.json` se versiona.
+>
+> Un cliente que no encuentre la variable **entrega el marcador sin sustituir** en lugar de
+> omitirlo. El servidor detecta ese caso y recurre al `.env`, en vez de intentar autenticarse
+> con la cadena `${JIRA_TOKEN}` y devolver un error de credenciales sin relación aparente.
+
+La primera vez que alguien abra el proyecto, Claude Code pedirá aprobar los servidores
+declarados. `claude mcp reset-project-choices` restablece esa decisión.
+
+Un servidor con el mismo nombre en varios ámbitos se resuelve por precedencia —local, luego
+proyecto, luego usuario— y se usa la definición completa del que gane, sin combinar campos.
 
 ---
 
