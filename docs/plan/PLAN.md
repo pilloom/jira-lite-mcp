@@ -360,8 +360,25 @@ que funciona con independencia del workflow.
 
 ### Fase 3 — A decidir con uso real
 
-No se compromete nada aquí. Candidatos: `jira_link_issues`, `jira_update_issue`,
-paginación avanzada en búsquedas. Se evalúan tras usar las fases 1 y 2 en el día a día.
+#### ✅ `jira_link_issues` — promovida por uso real
+
+Se implementó al comprobar que hacía falta: el **primer ticket real** creado con este MCP
+(LAN-1757) necesitaba un enlace `Relates`, y hubo que hacerlo con una llamada directa fuera
+de la herramienta. Ese es el criterio para promover algo de esta fase: que el uso lo pida, no
+que parezca buena idea.
+
+**Decisión de diseño — la relación se enuncia, no se modela.** La API expone
+`inwardIssue`/`outwardIssue`, que obliga a saber en qué extremo va cada issue. La herramienta
+acepta la frase tal como se dice —`"blocks"`, `"is blocked by"`, `"relates to"`— y coloca los
+extremos por su cuenta: si la relación es la inversa, invierte los issues. El resultado
+devuelve cómo quedó realmente el enlace, no cómo se pidió.
+
+Verificado en ambos sentidos: `LAN-1755 blocks LAN-1756` y `LAN-1755 is blocked by LAN-1756`
+producen enlaces correctos y opuestos.
+
+#### Pendientes sin compromiso
+
+`jira_update_issue`, paginación avanzada en búsquedas. Se evalúan con el uso.
 
 Cualquier herramienta de flujo compuesto (tipo "empezar trabajo" / "cerrar trabajo") sería
 opinada sobre un workflow concreto y **queda fuera del alcance** de un MCP genérico.
