@@ -7,7 +7,10 @@ export interface JiraIssue {
 }
 
 export interface JiraSearchResult {
-    total: number;
+    /** Issues devueltos en esta página, no el total de coincidencias. */
+    count: number;
+    /** Hay más resultados de los que caben en el límite pedido. */
+    hasMore: boolean;
     issues: JiraIssue[];
 }
 

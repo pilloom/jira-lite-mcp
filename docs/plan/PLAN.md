@@ -37,16 +37,16 @@ parámetro o a la guía del repo consumidor.
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
 | `ping` | ✅ | — |
-| `jira_get_issue` | ✅ *(con deuda: §5)* | `issues.ts` |
-| `jira_search` | ✅ *(con deuda: §5)* | `search.ts` |
+| `jira_get_issue` | ✅ | `issues.ts`, `adf.ts` |
+| `jira_search` | ✅ | `search.ts`, `adf.ts` |
 | `jira_issue_fields` | ✅ | `meta.ts` |
 | `jira_create_issue` | ✅ | `create.ts`, `fields.ts`, `adf.ts` |
 | `jira_transition_issue` | ✅ | `transitions.ts` |
 | `jira_link_issues` | ✅ | `links.ts` |
 | `jira_update_issue` | ✅ | `update.ts` |
 
-**Pendiente:** la deuda de §5, la fase 1 completa (lectura inteligente) y
-`jira_add_comment` / `jira_add_worklog`.
+**Pendiente:** la fase 1 completa (lectura inteligente) y `jira_add_comment` /
+`jira_add_worklog`. La deuda de §5 quedó resuelta el 2026-07-18.
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
 > `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
@@ -95,24 +95,32 @@ Configuración: **solo** `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`.
 
 | # | Deuda | Estado |
 |---|---|---|
-| 1 | `issues.ts` y `search.ts` tipan `description` como `string`, pero la API v3 devuelve **ADF** (objeto). Se está tratando un objeto como texto. | ❌ pendiente |
-| 2 | `search.ts` lee `total` de `POST /search/jql`, que **ya no lo devuelve**. Confirmado: la respuesta solo trae `issues`, `nextPageToken`, `isLast`. Hoy `jira_search` devuelve `total: undefined`. | ❌ pendiente |
-| 3 | `adf.ts` implementa `textToAdf` pero **no `adfToText`**, necesario para resolver la deuda 1. | ❌ pendiente |
+| 1 | `issues.ts` y `search.ts` tipaban `description` como `string`, pero la API v3 devuelve **ADF**. | ✅ resuelta |
+| 2 | `search.ts` leía un `total` que `POST /search/jql` **ya no devuelve**. | ✅ resuelta |
+| 3 | `adf.ts` no implementaba `adfToText`. | ✅ resuelta |
 | 4 | `createJiraClient()` se instancia en cada llamada. Funciona; **no se toca** sin motivo real. | ⏸️ deliberado |
 
-> Las deudas 1-3 son el mismo trabajo y **bloquean la fase 1**: `jira_project_summary` se
-> construye sobre la búsqueda y heredaría el `total` roto.
+### Resolución (2026-07-18)
 
-**Comprobado a través del protocolo MCP (2026-07-18), que es como lo verá un LLM:**
+`adfToText` aplana el documento a texto legible y tolera lo que le llegue: un string —los
+campos de texto plano vienen así—, `null` o un documento completo. Cubre además nodos que
+`textToAdf` nunca genera pero que Jira sí devuelve: listas, encabezados, menciones, emoji,
+bloques de código y separadores.
 
-- `jira_get_issue LAN-1757` devuelve `description` como **documento ADF en bruto**: cinco
-  párrafos de texto se convierten en un muro de JSON anidado con `type`, `version`, `content`
-  y un nodo por párrafo. Ilegible y caro en tokens para transmitir lo que es texto plano.
-- `jira_search` devuelve **`total: null`**.
+**Round-trip exacto verificado** para `textToAdf` → `adfToText`, incluidos acentos, saltos
+múltiples y símbolos (`{a+b}`, `[ ]`, `@`).
 
-Es la peor deuda del proyecto y la que más contradice la tesis de §1 («respuestas optimizadas
-para LLM»): hoy `jira_get_issue` devuelve exactamente el tipo de objeto crudo que este MCP
-existe para evitar.
+**El `total` se sustituye por `count` + `hasMore`.** El endpoint nuevo no devuelve el total de
+coincidencias: pagina con `nextPageToken`. Informar de cuántos se devuelven y de si quedan más
+es honesto; inventar un total que la API ya no da, no. `jira_search` acepta ahora `limit`, que
+es lo que hace accionable el `hasMore`.
+
+> Si `jira_project_summary` necesita totales reales, la vía es
+> `POST /rest/api/3/search/approximate-count`, una llamada aparte. Se añadirá si ese caso lo
+> pide, no antes.
+
+Verificado a través del protocolo MCP: la descripción de LAN-1757 llega como texto plano
+legible, y una búsqueda con `limit=5` sobre el proyecto devuelve `count: 5, hasMore: true`.
 
 ---
 
@@ -125,12 +133,12 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 |---|---|---|---|
 | 1 | `jira_issue_fields` | 2 | ✅ |
 | 2 | `jira_create_issue` | 2 | ✅ |
-| 3 | `textToAdf` (parte de `adf.ts`) | 0 | ✅ parcial — falta `adfToText` |
+| 3 | `textToAdf` (parte de `adf.ts`) | 0 | ✅ |
 | 4 | `jira_transition_issue` | 2 | ✅ |
 | 5 | `jira_link_issues` | 3 | ✅ promovida por uso real |
 | 6 | `jira_update_issue` | 3 | ✅ promovida por uso real |
-| 7 | **Deuda §5: `adfToText` + `search.ts` + `issues.ts`** | 0 | ⏭️ **siguiente** |
-| 8 | `jira_my_work`, `project_summary`, `explain_issue` | 1 | pendiente |
+| 7 | **Deuda §5: `adfToText` + `search.ts` + `issues.ts`** | 0 | ✅ |
+| 8 | `jira_my_work`, `project_summary`, `explain_issue` | 1 | ⏭️ **siguiente** |
 | 9 | `jira_add_comment`, `jira_add_worklog` | 2 | pendiente |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
@@ -309,15 +317,15 @@ src/
 │   ├── client.ts
 │   ├── error.ts
 │   ├── names.ts             ✅ normalización de nombres (idioma/acentos)
-│   ├── adf.ts               ✅ textToAdf · ❌ falta adfToText
+│   ├── adf.ts               ✅ textToAdf + adfToText
 │   ├── fields.ts            ✅ resolución por nombre + serialización por tipo
 │   ├── meta.ts              ✅ createmeta + editmeta
 │   ├── create.ts            ✅
 │   ├── update.ts            ✅
 │   ├── transitions.ts       ✅
 │   ├── links.ts             ✅
-│   ├── issues.ts            ⚠️ deuda §5
-│   ├── search.ts            ⚠️ deuda §5
+│   ├── issues.ts            ✅
+│   ├── search.ts            ✅
 │   ├── users.ts             ⏳ fase 1
 │   ├── my-work.ts           ⏳ fase 1
 │   ├── project-summary.ts   ⏳ fase 1
@@ -356,8 +364,9 @@ Al completar lo previsto: **13 herramientas**, ninguna acoplada a una instancia 
 1. **Resolución de nombres de tipo de issue para JQL.** §7.3 la hace necesaria en cuanto una
    herramienta construya JQL por tipo. Pendiente de decidir si se resuelve vía `/issuetype` o
    pasando el id.
-2. **Paginación.** Derivar `total` del resultado o implementar `nextPageToken` completo.
-   Se decide al abordar la deuda §5.
+2. ~~**Paginación.**~~ ✅ Resuelta: `count` + `hasMore` en lugar de un `total` que la API ya no
+   da (§5). La paginación completa con `nextPageToken` queda pendiente de que algún flujo
+   necesite recorrer más de una página.
 3. ~~**Verificación en MCP Inspector.**~~ ✅ Resuelta: pasada completa el 2026-07-18 (§2). La
    vía es `--cli`, que no necesita navegador y sirve tanto para `tools/list` como para
    `tools/call`. Queda como comprobación de cierre de cada fase, no de cada tarea.

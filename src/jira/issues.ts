@@ -1,3 +1,4 @@
+import { adfToText } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 
@@ -13,7 +14,8 @@ interface JiraApiIssueResponse {
         assignee: {
             displayName: string;
         } | null;
-        description: string | null;
+        /** Documento ADF: la API v3 nunca devuelve texto plano aquí. */
+        description: unknown;
     };
 }
 
@@ -30,7 +32,7 @@ export async function getIssue(issueKey: string): Promise<JiraIssue> {
             summary: response.data.fields.summary,
             status: response.data.fields.status.name,
             assignee: response.data.fields.assignee?.displayName ?? null,
-            description: response.data.fields.description,
+            description: adfToText(response.data.fields.description),
         };
     } catch (error) {
         handleJiraError(error);

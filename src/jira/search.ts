@@ -1,10 +1,10 @@
+import { adfToText } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 
 import type { JiraIssue, JiraSearchResult } from '../types/jira.js';
 
 interface JiraSearchResponse {
-    total: number;
     issues: Array<{
         key: string;
         fields: {
@@ -15,12 +15,21 @@ interface JiraSearchResponse {
             assignee: {
                 displayName: string;
             } | null;
-            description: string | null;
+            /** Documento ADF: la API v3 nunca devuelve texto plano aquí. */
+            description: unknown;
         };
     }>;
+    /** Ausente cuando la página devuelta es la última. */
+    nextPageToken?: string;
+    isLast?: boolean;
 }
 
-export async function searchIssues(jql: string): Promise<JiraSearchResult> {
+const DEFAULT_LIMIT = 20;
+
+export async function searchIssues(
+    jql: string,
+    limit: number = DEFAULT_LIMIT,
+): Promise<JiraSearchResult> {
     try {
         const client = createJiraClient();
 
@@ -28,13 +37,8 @@ export async function searchIssues(jql: string): Promise<JiraSearchResult> {
             '/rest/api/3/search/jql',
             {
                 jql,
-                maxResults: 20,
-                fields: [
-                    'summary',
-                    'status',
-                    'assignee',
-                    'description',
-                ],
+                maxResults: limit,
+                fields: ['summary', 'status', 'assignee', 'description'],
             },
         );
 
@@ -43,11 +47,16 @@ export async function searchIssues(jql: string): Promise<JiraSearchResult> {
             summary: issue.fields.summary,
             status: issue.fields.status.name,
             assignee: issue.fields.assignee?.displayName ?? null,
-            description: issue.fields.description,
+            description: adfToText(issue.fields.description),
         }));
 
         return {
-            total: response.data.total,
+            count: issues.length,
+            // Este endpoint no devuelve el total de coincidencias: pagina con
+            // `nextPageToken`. Se informa de si quedan resultados en lugar de
+            // inventar un total que la API ya no da.
+            hasMore: response.data.isLast === false ||
+                response.data.nextPageToken !== undefined,
             issues,
         };
     } catch (error) {
