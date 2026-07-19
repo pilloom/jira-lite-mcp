@@ -43,6 +43,33 @@ export interface JiraCommentResult {
     created: string;
 }
 
+export interface JiraWorklogEntry {
+    id: string;
+    author: string;
+    timeSpent: string;
+    timeSpentSeconds: number;
+    started: string;
+    comment: string | null;
+}
+
+export interface JiraWorklogList {
+    key: string;
+    originalEstimate: string | null;
+    /** Total registrado, tal como lo expresa Jira según la jornada del sitio. */
+    totalSpent: string | null;
+    totalSpentSeconds: number;
+    count: number;
+    worklogs: JiraWorklogEntry[];
+}
+
+export type JiraDeletableType = 'comment' | 'worklog' | 'link';
+
+export interface JiraDeleteResult {
+    deleted: JiraDeletableType;
+    id: string;
+    issueKey?: string;
+}
+
 export interface JiraWorklogResult {
     key: string;
     id: string;
@@ -61,9 +88,13 @@ export interface JiraSubtask {
 export interface JiraLinkedIssue extends JiraSubtask {
     /** Cómo se lee la relación desde este issue: «blocks», «relates to». */
     relation: string;
+    /** Identificador del enlace, necesario para eliminarlo. */
+    linkId: string;
 }
 
 export interface JiraIssueComment {
+    /** Necesario para eliminar el comentario. */
+    id: string;
     author: string;
     created: string;
     body: string;

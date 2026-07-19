@@ -23,6 +23,7 @@ interface JiraApiRelatedIssue {
 }
 
 interface JiraApiComment {
+    id: string;
     author: {
         displayName: string;
     };
@@ -46,6 +47,7 @@ interface JiraApiIssueContext {
         parent?: JiraApiRelatedIssue;
         subtasks?: JiraApiRelatedIssue[];
         issuelinks?: Array<{
+            id: string;
             type: { inward: string; outward: string };
             inwardIssue?: JiraApiRelatedIssue;
             outwardIssue?: JiraApiRelatedIssue;
@@ -159,6 +161,7 @@ export async function explainIssue(
             seenLinks.add(signature);
 
             links.push({
+                linkId: link.id,
                 relation,
                 key: related.key,
                 summary: related.fields.summary,
@@ -171,6 +174,7 @@ export async function explainIssue(
         const comments: JiraIssueComment[] = allComments
             .slice(-RECENT_COMMENTS)
             .map((comment) => ({
+                id: comment.id,
                 author: comment.author.displayName,
                 created: comment.created.slice(0, 10),
                 body: adfToText(comment.body) ?? '',

@@ -1,14 +1,44 @@
-import { textToAdf } from './adf.js';
+import { adfToText, textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 
-import type { JiraWorklogResult } from '../types/jira.js';
+import type {
+    JiraWorklogEntry,
+    JiraWorklogList,
+    JiraWorklogResult,
+} from '../types/jira.js';
 
 interface JiraApiWorklogResponse {
     id: string;
     timeSpent: string;
     timeSpentSeconds: number;
     started: string;
+}
+
+interface JiraApiWorklogEntry {
+    id: string;
+    author: {
+        displayName: string;
+    };
+    timeSpent: string;
+    timeSpentSeconds: number;
+    started: string;
+    comment?: unknown;
+}
+
+interface JiraApiWorklogList {
+    worklogs: JiraApiWorklogEntry[];
+    total: number;
+}
+
+interface JiraApiTimeTracking {
+    fields: {
+        timetracking: {
+            originalEstimate?: string;
+            remainingEstimate?: string;
+            timeSpent?: string;
+        };
+    };
 }
 
 export interface WorklogInput {
@@ -63,6 +93,52 @@ export async function addWorklog(
             timeSpent: response.data.timeSpent,
             timeSpentSeconds: response.data.timeSpentSeconds,
             started: response.data.started.slice(0, 10),
+        };
+    } catch (error) {
+        handleJiraError(error);
+    }
+}
+
+/**
+ * Registros de tiempo de un issue junto con su estimación. Los identificadores
+ * se incluyen porque son necesarios para eliminar un registro concreto.
+ */
+export async function getWorklog(issueKey: string): Promise<JiraWorklogList> {
+    try {
+        const client = createJiraClient();
+
+        const [list, issue] = await Promise.all([
+            client.get<JiraApiWorklogList>(
+                `/rest/api/3/issue/${issueKey}/worklog`,
+            ),
+            client.get<JiraApiTimeTracking>(`/rest/api/3/issue/${issueKey}`, {
+                params: { fields: 'timetracking' },
+            }),
+        ]);
+
+        const entries: JiraWorklogEntry[] = list.data.worklogs.map((entry) => ({
+            id: entry.id,
+            author: entry.author.displayName,
+            timeSpent: entry.timeSpent,
+            timeSpentSeconds: entry.timeSpentSeconds,
+            started: entry.started.slice(0, 10),
+            comment: adfToText(entry.comment),
+        }));
+
+        const timetracking = issue.data.fields.timetracking;
+
+        return {
+            key: issueKey,
+            originalEstimate: timetracking.originalEstimate ?? null,
+            // Lo calcula Jira según la jornada configurada en el sitio, así que
+            // se toma tal cual en lugar de formatear los segundos aquí.
+            totalSpent: timetracking.timeSpent ?? null,
+            totalSpentSeconds: entries.reduce(
+                (total, entry) => total + entry.timeSpentSeconds,
+                0,
+            ),
+            count: list.data.total,
+            worklogs: entries,
         };
     } catch (error) {
         handleJiraError(error);

@@ -66,6 +66,7 @@ claude mcp get jira-lite
 | `jira_get_issue` | Datos básicos de un issue |
 | `jira_search` | Búsqueda por JQL |
 | `jira_issue_fields` | Tipos de issue de un proyecto y campos que admite cada uno al crearlo |
+| `jira_get_worklog` | Tiempo registrado en un issue: estimación, total y desglose |
 
 ### Escritura
 
@@ -77,6 +78,7 @@ claude mcp get jira-lite
 | `jira_link_issues` | Enlazar dos issues |
 | `jira_add_comment` | Comentar |
 | `jira_add_worklog` | Registrar tiempo |
+| `jira_delete` | Eliminar un comentario, un registro de tiempo o un enlace |
 
 ---
 
@@ -102,6 +104,11 @@ aplica contra el workflow del issue.
 pero `jira_search` necesita `Story` o `Bug`: escribir el nombre traducido devuelve cero
 resultados sin dar error. `jira_project_summary` no se ve afectado, porque agrupa por tipo
 sobre los issues ya recuperados.
+
+**No se pueden eliminar issues.** `jira_delete` cubre comentarios, registros de tiempo y
+enlaces, pero no issues: borrar uno destruye trabajo registrado junto con sus subtareas y deja
+un hueco permanente en la numeración del proyecto. Para retirar un issue de la circulación,
+moverlo a un estado final con `jira_transition_issue`.
 
 **Las búsquedas no devuelven el total de coincidencias.** El endpoint de Jira pagina y no
 informa del total, así que `jira_search` devuelve cuántos issues trae (`count`) y si quedan más

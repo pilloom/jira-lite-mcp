@@ -13,6 +13,8 @@ import { projectSummaryTool } from './project-summary.js';
 import { explainIssueTool } from './explain-issue.js';
 import { addCommentTool } from './add-comment.js';
 import { addWorklogTool } from './add-worklog.js';
+import { getWorklogTool } from './get-worklog.js';
+import { deleteTool } from './delete.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -132,5 +134,23 @@ export function registerTools(server: McpServer) {
             inputSchema: addWorklogTool.inputSchema,
         },
         async (args) => addWorklogTool.handler(args),
+    );
+
+    server.registerTool(
+        getWorklogTool.name,
+        {
+            description: getWorklogTool.description,
+            inputSchema: getWorklogTool.inputSchema,
+        },
+        async (args) => getWorklogTool.handler(args),
+    );
+
+    server.registerTool(
+        deleteTool.name,
+        {
+            description: deleteTool.description,
+            inputSchema: deleteTool.inputSchema,
+        },
+        async (args) => deleteTool.handler(args),
     );
 }

@@ -32,8 +32,8 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**13 herramientas.** Compila en verde; todas verificadas contra un Jira real.
-**Todo lo previsto en el plan está implementado.**
+**15 herramientas.** Compila en verde; todas verificadas contra un Jira real.
+**Instalado en Claude Code** (`--scope user`) y en uso.
 
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
@@ -50,8 +50,10 @@ parámetro o a la guía del repo consumidor.
 | `jira_explain_issue` | ✅ | `explain.ts` |
 | `jira_add_comment` | ✅ | `comments.ts` |
 | `jira_add_worklog` | ✅ | `worklog.ts` |
+| `jira_get_worklog` | ✅ | `worklog.ts` |
+| `jira_delete` | ✅ | `delete.ts` |
 
-**Pendiente:** nada del plan original. Lo siguiente sale de pulir con uso real.
+**Pendiente:** nada previsto. Lo siguiente sale del uso real.
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
 > `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
@@ -146,6 +148,8 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 | 8 | `jira_my_work` | 1 | ✅ |
 | 9 | `jira_project_summary`, `jira_explain_issue` | 1 | ✅ |
 | 10 | `jira_add_comment`, `jira_add_worklog` | 2 | ✅ |
+| 11 | Instalación en Claude Code | — | ✅ |
+| 12 | `jira_get_worklog`, `jira_delete` | 3 | ✅ promovidas por uso real |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
 Las tareas 5 y 6 se implementaron porque un ticket real las necesitó.
@@ -354,6 +358,28 @@ como `3d`. Las guías lo atribuían al parser de esa herramienta, y acertaban. C
 la restricción no aplica.
 
 ### Fase 3 — Sin compromiso
+
+#### ✅ `jira_get_worklog` y `jira_delete` — promovidas por uso real
+
+Mismo criterio de siempre: durante las pruebas hubo que limpiar worklogs, comentarios y
+enlaces con scripts fuera de la herramienta. Esa es la señal.
+
+**Un solo `jira_delete` en lugar de tres herramientas.** Comentario, registro de tiempo y
+enlace se distinguen por un parámetro `type`, para no triplicar el catálogo con operaciones
+que apenas difieren.
+
+**No permite eliminar issues, a propósito.** Borrar un issue destruye trabajo registrado
+—junto con sus subtareas— y deja un hueco permanente en la numeración. Para retirar uno de la
+circulación está la transición a un estado final. Es la única omisión deliberada del catálogo.
+
+**Los identificadores tenían que venir de algún sitio.** `jira_explain_issue` no exponía el id
+de comentarios ni enlaces, así que el borrado habría sido inusable: se añadieron `id` y
+`linkId`. `jira_get_worklog` los incluye desde el principio.
+
+`jira_delete` acepta el identificador como cadena o como número: son cadenas de dígitos y
+confundirlos al leerlos de una respuesta previa es fácil.
+
+#### Pendiente sin compromiso
 
 Paginación avanzada en búsquedas. Se evalúa con el uso.
 
