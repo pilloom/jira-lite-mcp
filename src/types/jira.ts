@@ -66,6 +66,23 @@ export interface JiraCreatedIssue {
     url: string;
 }
 
+export interface JiraUpdateIssueInput {
+    issueKey: string;
+    summary?: string;
+    description?: string;
+    assignee?: string;
+    priority?: string;
+    labels?: string[];
+    /** Campos personalizados indexados por nombre visible o por identificador. */
+    customFields?: Record<string, unknown>;
+}
+
+export interface JiraUpdatedIssue {
+    key: string;
+    /** Identificadores de los campos efectivamente enviados. */
+    updated: string[];
+}
+
 export interface JiraTransition {
     id: string;
     name: string;

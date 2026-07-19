@@ -7,6 +7,7 @@ import { issueFieldsTool } from './issue-fields.js';
 import { createIssueTool } from './create-issue.js';
 import { transitionIssueTool } from './transition-issue.js';
 import { linkIssuesTool } from './link-issues.js';
+import { updateIssueTool } from './update-issue.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -72,5 +73,14 @@ export function registerTools(server: McpServer) {
             inputSchema: linkIssuesTool.inputSchema,
         },
         async (args) => linkIssuesTool.handler(args),
+    );
+
+    server.registerTool(
+        updateIssueTool.name,
+        {
+            description: updateIssueTool.description,
+            inputSchema: updateIssueTool.inputSchema,
+        },
+        async (args) => updateIssueTool.handler(args),
     );
 }

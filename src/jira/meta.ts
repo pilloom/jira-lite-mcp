@@ -168,6 +168,29 @@ function toFieldSpec(field: JiraApiField): JiraFieldSpec {
     return spec;
 }
 
+/**
+ * Campos que el issue admite al editarse. A diferencia de la pantalla de
+ * creación, la API los devuelve indexados por identificador en lugar de como
+ * lista, así que se normalizan al mismo contrato.
+ */
+export async function getEditableFields(
+    issueKey: string,
+): Promise<JiraFieldSpec[]> {
+    try {
+        const client = createJiraClient();
+
+        const response = await client.get<{
+            fields: Record<string, Omit<JiraApiField, 'fieldId'>>;
+        }>(`/rest/api/3/issue/${issueKey}/editmeta`);
+
+        return Object.entries(response.data.fields).map(([id, field]) =>
+            toFieldSpec({ ...field, fieldId: id }),
+        );
+    } catch (error) {
+        handleJiraError(error);
+    }
+}
+
 export async function getIssueTypes(
     projectKey: string,
 ): Promise<JiraIssueTypesResult> {
