@@ -14,6 +14,29 @@ export interface JiraSearchResult {
     issues: JiraIssue[];
 }
 
+export interface JiraUser {
+    accountId: string;
+    displayName: string;
+    email: string | null;
+}
+
+export interface JiraWorkItem {
+    key: string;
+    summary: string;
+    type: string;
+    status: string;
+    priority: string | null;
+    /** Fecha de la última actualización, sin hora. */
+    updated: string;
+}
+
+export interface JiraMyWorkResult {
+    user: string;
+    count: number;
+    hasMore: boolean;
+    issues: JiraWorkItem[];
+}
+
 export interface JiraIssueType {
     id: string;
     name: string;

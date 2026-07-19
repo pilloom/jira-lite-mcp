@@ -32,7 +32,7 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**8 herramientas.** Compila en verde; todas verificadas contra un Jira real.
+**9 herramientas.** Compila en verde; todas verificadas contra un Jira real.
 
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
@@ -44,9 +44,10 @@ parámetro o a la guía del repo consumidor.
 | `jira_transition_issue` | ✅ | `transitions.ts` |
 | `jira_link_issues` | ✅ | `links.ts` |
 | `jira_update_issue` | ✅ | `update.ts` |
+| `jira_my_work` | ✅ | `my-work.ts`, `users.ts` |
 
-**Pendiente:** la fase 1 completa (lectura inteligente) y `jira_add_comment` /
-`jira_add_worklog`. La deuda de §5 quedó resuelta el 2026-07-18.
+**Pendiente:** `jira_project_summary` y `jira_explain_issue` (fase 1), más
+`jira_add_comment` / `jira_add_worklog` (fase 2).
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
 > `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
@@ -138,8 +139,9 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 | 5 | `jira_link_issues` | 3 | ✅ promovida por uso real |
 | 6 | `jira_update_issue` | 3 | ✅ promovida por uso real |
 | 7 | **Deuda §5: `adfToText` + `search.ts` + `issues.ts`** | 0 | ✅ |
-| 8 | `jira_my_work`, `project_summary`, `explain_issue` | 1 | ⏭️ **siguiente** |
-| 9 | `jira_add_comment`, `jira_add_worklog` | 2 | pendiente |
+| 8 | `jira_my_work` | 1 | ✅ |
+| 9 | `jira_project_summary`, `jira_explain_issue` | 1 | ⏭️ **siguiente** |
+| 10 | `jira_add_comment`, `jira_add_worklog` | 2 | pendiente |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
 Las tareas 5 y 6 se implementaron porque un ticket real las necesitó.
@@ -263,18 +265,28 @@ Coste total: 3 claves, ninguna quemada.
 
 ### Fase 1 — Lectura inteligente
 
-#### `jira_my_work`
+#### ✅ `jira_my_work`
 
 - `users.ts` — `getCurrentUser()` vía `GET /rest/api/3/myself`.
-- `my-work.ts` — construye el JQL y **reutiliza la búsqueda existente**; no duplica el fetch.
+- `my-work.ts` — construye el JQL y reutiliza la ejecución de búsqueda.
 
 JQL base: `assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC`
 
 > Se filtra por **`statusCategory`**, no por `status != Done`: la categoría es invariante de
 > Jira, el nombre del estado depende del workflow y del idioma. En LAN el estado final se
-> llama `Finalizada`, y `status != Done` no filtraría nada.
+> llama `Finalizada`, y `status != Done` no habría filtrado nada. **Verificado**: por defecto
+> no aparece ningún `Finalizada`; con `includeDone: true` sí.
 
-Parámetros opcionales: `project`, `limit`, `includeDone`.
+**Reutilización sin acoplar contratos.** `my_work` necesita `priority` e `updated`, que la
+búsqueda no pedía. En vez de duplicar el fetch o hinchar `JiraIssue` con campos que solo usa
+una herramienta, se extrajo `runJql(jql, fields, limit)` en `search.ts`: devuelve los issues
+sin interpretar y cada herramienta pide sus campos y los traduce a su propio contrato.
+
+`updated` se recorta a la fecha, sin hora ni zona horaria: basta para situar el issue y ahorra
+ruido.
+
+Parámetros opcionales: `project`, `limit`, `includeDone`. Sin `project` busca en **todos** los
+proyectos del sitio — verificado con issues de `LAN` e `IB` en la misma respuesta.
 
 #### `jira_project_summary`
 

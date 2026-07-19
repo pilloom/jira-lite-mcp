@@ -8,6 +8,7 @@ import { createIssueTool } from './create-issue.js';
 import { transitionIssueTool } from './transition-issue.js';
 import { linkIssuesTool } from './link-issues.js';
 import { updateIssueTool } from './update-issue.js';
+import { myWorkTool } from './my-work.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -82,5 +83,14 @@ export function registerTools(server: McpServer) {
             inputSchema: updateIssueTool.inputSchema,
         },
         async (args) => updateIssueTool.handler(args),
+    );
+
+    server.registerTool(
+        myWorkTool.name,
+        {
+            description: myWorkTool.description,
+            inputSchema: myWorkTool.inputSchema,
+        },
+        async (args) => myWorkTool.handler(args),
     );
 }
