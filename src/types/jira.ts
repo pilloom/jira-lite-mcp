@@ -78,3 +78,17 @@ export interface JiraTransitionResult {
     status: string;
     transition: string;
 }
+
+export interface JiraLinkType {
+    name: string;
+    /** Cómo se lee la relación desde el issue de origen: «blocks». */
+    outward: string;
+    /** Cómo se lee desde el de destino: «is blocked by». */
+    inward: string;
+}
+
+export interface JiraLinkResult {
+    from: string;
+    relation: string;
+    to: string;
+}
