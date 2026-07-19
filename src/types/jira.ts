@@ -37,6 +37,21 @@ export interface JiraMyWorkResult {
     issues: JiraWorkItem[];
 }
 
+export interface JiraCommentResult {
+    key: string;
+    id: string;
+    created: string;
+}
+
+export interface JiraWorklogResult {
+    key: string;
+    id: string;
+    /** Cómo ha interpretado Jira el tiempo enviado. */
+    timeSpent: string;
+    timeSpentSeconds: number;
+    started: string;
+}
+
 export interface JiraSubtask {
     key: string;
     summary: string;

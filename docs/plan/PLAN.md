@@ -32,7 +32,8 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**11 herramientas.** Compila en verde; todas verificadas contra un Jira real.
+**13 herramientas.** Compila en verde; todas verificadas contra un Jira real.
+**Todo lo previsto en el plan está implementado.**
 
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
@@ -47,9 +48,10 @@ parámetro o a la guía del repo consumidor.
 | `jira_my_work` | ✅ | `my-work.ts`, `users.ts` |
 | `jira_project_summary` | ✅ | `project-summary.ts` |
 | `jira_explain_issue` | ✅ | `explain.ts` |
+| `jira_add_comment` | ✅ | `comments.ts` |
+| `jira_add_worklog` | ✅ | `worklog.ts` |
 
-**Pendiente:** `jira_add_comment` y `jira_add_worklog` (fase 2). **La fase 1 está
-completa.**
+**Pendiente:** nada del plan original. Lo siguiente sale de pulir con uso real.
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
 > `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
@@ -143,7 +145,7 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 | 7 | **Deuda §5: `adfToText` + `search.ts` + `issues.ts`** | 0 | ✅ |
 | 8 | `jira_my_work` | 1 | ✅ |
 | 9 | `jira_project_summary`, `jira_explain_issue` | 1 | ✅ |
-| 10 | `jira_add_comment`, `jira_add_worklog` | 2 | ⏭️ **siguiente** |
+| 10 | `jira_add_comment`, `jira_add_worklog` | 2 | ✅ |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
 Las tareas 5 y 6 se implementaron porque un ticket real las necesitó.
@@ -323,12 +325,33 @@ entre LAN-1757 y LAN-1754, así que se colapsan por relación y clave.
 
 ### Fase 2 — Escritura restante
 
-#### `jira_add_comment` y `jira_add_worklog`
+#### ✅ `jira_add_comment` y `jira_add_worklog`
 
-- Comentario: texto plano → ADF. *(La lógica ya existe dentro de `transitions.ts`; al
-  extraerla conviene compartirla, no duplicarla.)*
-- Worklog: `timeSpent` **pasado tal cual**. La jornada la define la instancia
-  (`GET /rest/api/3/configuration`); no corresponde al MCP imponer si `1d` son 8 o 24 horas.
+El comentario se extrajo a `comments.ts` y `transitions.ts` pasa a usarlo, en lugar de
+mantener dos caminos hacia el mismo endpoint.
+
+`timeSpent` se envía **tal cual**. La respuesta incluye `timeSpentSeconds`, que es cómo lo ha
+interpretado Jira: quien llama puede comprobar el resultado en vez de fiarse de una conversión
+hecha por este servidor.
+
+`started` acepta una fecha ISO y la traduce al formato del endpoint, que rechaza la forma
+terminada en `Z` y exige el desfase sin dos puntos. Una fecha no reconocible falla con un
+mensaje explícito antes de llamar a la API.
+
+##### El `1d` triplicado: resuelto
+
+Las guías del equipo advierten de que `1d` se registra como 24 h y Jira lo muestra como `3d`.
+Verificado contra la API directa en LAN-1755:
+
+| Enviado | Guardado | Jira muestra |
+|---|---|---|
+| `8h` | 28800 s (8 h) | `1d` |
+| `1d` | 28800 s (8 h) | `1d` |
+
+**La jornada del sitio son 8 horas y `1d` se interpreta correctamente.** El ×3 lo producía el
+MCP oficial, que convertía `1d` a 86400 s antes de enviarlo; Jira recibía 24 h y las mostraba
+como `3d`. Las guías lo atribuían al parser de esa herramienta, y acertaban. Con este servidor
+la restricción no aplica.
 
 ### Fase 3 — Sin compromiso
 

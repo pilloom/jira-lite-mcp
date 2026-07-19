@@ -1,5 +1,5 @@
-import { textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
+import { addComment } from './comments.js';
 import { handleJiraError } from './error.js';
 import { normalizeName } from './names.js';
 
@@ -91,9 +91,7 @@ export async function transitionIssue(
         // incluya el campo: cuando no la hay, Jira responde 204 y lo descarta
         // sin avisar, de modo que el comentario se perdería en silencio.
         if (comment !== undefined) {
-            await client.post(`/rest/api/3/issue/${issueKey}/comment`, {
-                body: textToAdf(comment),
-            });
+            await addComment(issueKey, comment);
         }
 
         return {

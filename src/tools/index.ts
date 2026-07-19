@@ -11,6 +11,8 @@ import { updateIssueTool } from './update-issue.js';
 import { myWorkTool } from './my-work.js';
 import { projectSummaryTool } from './project-summary.js';
 import { explainIssueTool } from './explain-issue.js';
+import { addCommentTool } from './add-comment.js';
+import { addWorklogTool } from './add-worklog.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -112,5 +114,23 @@ export function registerTools(server: McpServer) {
             inputSchema: explainIssueTool.inputSchema,
         },
         async (args) => explainIssueTool.handler(args),
+    );
+
+    server.registerTool(
+        addCommentTool.name,
+        {
+            description: addCommentTool.description,
+            inputSchema: addCommentTool.inputSchema,
+        },
+        async (args) => addCommentTool.handler(args),
+    );
+
+    server.registerTool(
+        addWorklogTool.name,
+        {
+            description: addWorklogTool.description,
+            inputSchema: addWorklogTool.inputSchema,
+        },
+        async (args) => addWorklogTool.handler(args),
     );
 }
