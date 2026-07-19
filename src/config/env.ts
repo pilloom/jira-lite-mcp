@@ -1,4 +1,15 @@
-import 'dotenv/config';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { config } from 'dotenv';
+
+// El servidor se ejecuta desde el directorio del proyecto que lo consume, no
+// desde el suyo, así que el fichero de entorno se busca junto al código en
+// lugar de en el directorio de trabajo. Las variables ya presentes en el
+// entorno tienen prioridad: permiten configurarlo desde el cliente MCP.
+const moduleDirectory = dirname(fileURLToPath(import.meta.url));
+
+config({ path: resolve(moduleDirectory, '../../.env') });
 
 function getEnv(name: string): string | undefined {
     return process.env[name];
