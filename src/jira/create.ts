@@ -27,9 +27,12 @@ const FIELDS_HANDLED_BY_SERVER = new Set(['project', 'issuetype', 'reporter']);
 
 /**
  * Comprueba el payload contra el esquema real del proyecto y tipo de issue
- * antes de enviarlo. Jira reserva la clave del issue al procesar la petición,
- * así que un payload inválido consume una clave de forma irreversible: los
- * errores previsibles deben detectarse aquí, no en la API.
+ * antes de enviarlo, para que el error explique qué corregir en lugar de
+ * llegar como un rechazo genérico de la API.
+ *
+ * Medido el 2026-07-19: ni esta comprobación ni un rechazo de Jira consumen
+ * claves de issue —el contador no avanzó en tres intentos fallidos seguidos—.
+ * Aun así conviene validar aquí: el mensaje es más útil y no gasta una llamada.
  */
 function buildFields(
     input: JiraCreateIssueInput,
@@ -150,6 +153,33 @@ function assertPolicyFields(
     }
 }
 
+/**
+ * Relee la estimación tal como ha quedado registrada, con su equivalencia en
+ * segundos: el sufijo de días se interpreta según la jornada del sitio, así que
+ * lo pedido y lo guardado no tienen por qué coincidir.
+ */
+async function readTimetracking(
+    issueKey: string,
+): Promise<{ originalEstimate: string | null; originalEstimateSeconds: number | null }> {
+    const client = createJiraClient();
+
+    const response = await client.get<{
+        fields: {
+            timetracking: {
+                originalEstimate?: string;
+                originalEstimateSeconds?: number;
+            };
+        };
+    }>(`/rest/api/3/issue/${issueKey}`, { params: { fields: 'timetracking' } });
+
+    const timetracking = response.data.fields.timetracking;
+
+    return {
+        originalEstimate: timetracking.originalEstimate ?? null,
+        originalEstimateSeconds: timetracking.originalEstimateSeconds ?? null,
+    };
+}
+
 export async function createIssue(
     input: JiraCreateIssueInput,
 ): Promise<JiraCreatedIssue> {
@@ -197,10 +227,19 @@ export async function createIssue(
                 ? await addWatchers(key, input.watchers)
                 : undefined;
 
+        // La creación no devuelve los campos resultantes, así que la estimación
+        // se relee: es la única forma de comprobar que Jira la interpretó como
+        // se pedía, y su unidad depende de la jornada configurada en el sitio.
+        const timetracking =
+            input.originalEstimate !== undefined
+                ? await readTimetracking(key)
+                : undefined;
+
         return {
             key,
             url: `${client.defaults.baseURL}/browse/${key}`,
             applied,
+            ...(timetracking !== undefined && { timetracking }),
             ...(watchers !== undefined && { watchers }),
         };
     } catch (error) {

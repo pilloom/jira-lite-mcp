@@ -90,14 +90,31 @@ export async function transitionIssue(
         // transición solo funciona si el workflow define una pantalla que
         // incluya el campo: cuando no la hay, Jira responde 204 y lo descarta
         // sin avisar, de modo que el comentario se perdería en silencio.
+        //
+        // Son dos operaciones, así que una puede salir bien y la otra no. Si
+        // falla el comentario se informa sin ocultar que el estado sí cambió:
+        // propagar el error a secas sugeriría que no se hizo nada, y quien
+        // reintentase volvería a transicionar un issue ya transicionado.
+        let commentPublished: boolean | undefined;
+        let commentError: string | undefined;
+
         if (comment !== undefined) {
-            await addComment(issueKey, comment);
+            try {
+                await addComment(issueKey, comment);
+                commentPublished = true;
+            } catch (error) {
+                commentPublished = false;
+                commentError =
+                    error instanceof Error ? error.message : String(error);
+            }
         }
 
         return {
             key: issueKey,
             status: transition.to.name,
             transition: transition.name,
+            ...(commentPublished !== undefined && { commentPublished }),
+            ...(commentError !== undefined && { commentError }),
         };
     } catch (error) {
         handleJiraError(error);

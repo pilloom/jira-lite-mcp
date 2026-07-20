@@ -234,6 +234,11 @@ export interface JiraCreatedIssue {
     dryRun?: boolean;
     /** Payload que se enviaría; solo en una validación sin crear. */
     fields?: Record<string, unknown>;
+    /** Estimación tal como quedó registrada, para poder contrastarla. */
+    timetracking?: {
+        originalEstimate: string | null;
+        originalEstimateSeconds: number | null;
+    };
     watchers?: string[];
 }
 
@@ -271,6 +276,9 @@ export interface JiraTransitionResult {
     key: string;
     status: string;
     transition: string;
+    /** Presente si se pidió comentario: el cambio de estado ya se aplicó. */
+    commentPublished?: boolean;
+    commentError?: string;
 }
 
 export interface JiraLinkType {
