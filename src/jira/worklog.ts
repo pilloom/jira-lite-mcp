@@ -87,12 +87,22 @@ export async function addWorklog(
             },
         );
 
+        // El sufijo de días depende de la jornada configurada en el sitio, que
+        // rara vez coincide con las 24 horas que uno supondría. Se explicita la
+        // equivalencia para que no haya que deducirla de los segundos.
+        const usesDays = /\d\s*d\b/i.test(input.timeSpent);
+
+        const hours = response.data.timeSpentSeconds / 3600;
+
         return {
             key: input.issueKey,
             id: response.data.id,
             timeSpent: response.data.timeSpent,
             timeSpentSeconds: response.data.timeSpentSeconds,
             started: response.data.started.slice(0, 10),
+            ...(usesDays && {
+                note: `"${input.timeSpent}" se ha registrado como ${hours} h según la jornada configurada en este sitio. Para no depender de esa configuración, indicar el tiempo en horas.`,
+            }),
         };
     } catch (error) {
         handleJiraError(error);

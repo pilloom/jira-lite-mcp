@@ -1,6 +1,7 @@
 import { adfToText } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
+import { normalizeName } from './names.js';
 
 import type { JiraIssueSummary, JiraSearchResult } from '../types/jira.js';
 
@@ -120,6 +121,53 @@ export async function runJqlAll<F>(
     }
 }
 
+/**
+ * Una búsqueda por tipo de issue que no devuelve nada es sospechosa: en JQL los
+ * tipos se nombran con su identificador en inglés, aunque el sitio los muestre
+ * traducidos. Escribir el nombre visible no da error, devuelve cero resultados,
+ * y un cero es indistinguible de «no hay ninguno».
+ *
+ * El aviso solo se emite cuando la búsqueda viene vacía: en cualquier otro caso
+ * sería ruido.
+ */
+async function warnAboutIssueTypeName(jql: string): Promise<string | undefined> {
+    const match = /issuetype\s*(?:=|!=|\bin\b)\s*\(?\s*"?([^"'),\s]+)"?/i.exec(
+        jql,
+    );
+
+    if (!match) {
+        return undefined;
+    }
+
+    const written = match[1]!;
+
+    if (/^\d+$/.test(written)) {
+        return undefined;
+    }
+
+    try {
+        const client = createJiraClient();
+
+        const response = await client.get<
+            Array<{ id: string; name: string }>
+        >('/rest/api/3/issuetype');
+
+        const displayed = response.data.some(
+            (type) => normalizeName(type.name) === normalizeName(written),
+        );
+
+        if (!displayed) {
+            return undefined;
+        }
+
+        return `La búsqueda no devolvió resultados. "${written}" es el nombre visible del tipo de issue, pero en JQL hay que usar su nombre canónico en inglés (Bug, Task, Story, "Sub-task", Epic) o su id; con el nombre traducido la consulta no falla, simplemente no encuentra nada.`;
+    } catch {
+        // El aviso es un extra: si no se puede comprobar, no se entorpece la
+        // respuesta de la búsqueda con un error ajeno a ella.
+        return undefined;
+    }
+}
+
 export async function searchIssues(
     jql: string,
     limit: number = DEFAULT_LIMIT,
@@ -138,9 +186,13 @@ export async function searchIssues(
         description: adfToText(issue.fields.description),
     }));
 
+    const warning =
+        issues.length === 0 ? await warnAboutIssueTypeName(jql) : undefined;
+
     return {
         count: issues.length,
         hasMore: page.hasMore,
+        ...(warning !== undefined && { warning }),
         issues,
     };
 }

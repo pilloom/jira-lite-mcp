@@ -30,6 +30,8 @@ export interface JiraSearchResult {
     count: number;
     /** Hay más resultados de los que caben en el límite pedido. */
     hasMore: boolean;
+    /** Motivo probable de un resultado vacío, cuando se detecta uno. */
+    warning?: string;
     issues: JiraIssueSummary[];
 }
 
@@ -96,6 +98,8 @@ export interface JiraWorklogResult {
     timeSpent: string;
     timeSpentSeconds: number;
     started: string;
+    /** Equivalencia real cuando el tiempo se expresó en días. */
+    note?: string;
 }
 
 export interface JiraSubtask {
