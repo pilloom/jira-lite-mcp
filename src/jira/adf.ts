@@ -81,6 +81,20 @@ function nodeToText(node: AdfNode): string {
 }
 
 /**
+ * Distingue un documento ADF de cualquier otro objeto. Aplanar algo que no lo
+ * es produce una cadena vacía, indistinguible de un campo realmente vacío.
+ */
+export function isAdfDocument(value: unknown): boolean {
+    if (value === null || typeof value !== 'object') {
+        return false;
+    }
+
+    const node = value as AdfNode;
+
+    return node.type === 'doc' && Array.isArray(node.content);
+}
+
+/**
  * Convierte un documento ADF en texto legible. Acepta también un string —los
  * campos de texto plano llegan así— y valores ausentes, de modo que quien
  * llama no necesita saber de qué tipo es el campo que está leyendo.

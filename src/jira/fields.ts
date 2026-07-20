@@ -1,7 +1,50 @@
-import { textToAdf } from './adf.js';
+import { adfToText, isAdfDocument, textToAdf } from './adf.js';
 import { normalizeName } from './names.js';
 
 import type { JiraFieldSpec } from '../types/jira.js';
+
+/**
+ * Traduce el valor de un campo a algo legible sin perder información.
+ *
+ * La API representa cada tipo de campo a su manera: texto rico como documento,
+ * usuarios y equipos como objetos, listas desplegables como `{id, value}`. Ante
+ * una forma que no reconoce, **devuelve el valor tal cual**: una cadena vacía
+ * sería indistinguible de un campo sin rellenar, que es la peor respuesta
+ * posible porque nadie sospecha de ella.
+ */
+export function readFieldValue(value: unknown): unknown {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    if (typeof value !== 'object') {
+        return value;
+    }
+
+    if (isAdfDocument(value)) {
+        return adfToText(value);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(readFieldValue);
+    }
+
+    const object = value as Record<string, unknown>;
+
+    // Los objetos de Jira nombran su etiqueta visible de tres formas distintas
+    // según el tipo de campo. El identificador se conserva cuando existe:
+    // es lo que hace falta para volver a escribir ese mismo valor.
+    const label =
+        object.displayName ?? object.name ?? object.value;
+
+    if (typeof label === 'string') {
+        return typeof object.id === 'string'
+            ? { id: object.id, name: label }
+            : label;
+    }
+
+    return value;
+}
 
 /**
  * Localiza un campo por su identificador o por su nombre visible, tolerando

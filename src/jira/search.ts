@@ -2,7 +2,7 @@ import { adfToText } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 
-import type { JiraIssue, JiraSearchResult } from '../types/jira.js';
+import type { JiraIssueSummary, JiraSearchResult } from '../types/jira.js';
 
 interface JiraSearchResponse<F> {
     issues: Array<{
@@ -130,7 +130,7 @@ export async function searchIssues(
         limit,
     );
 
-    const issues: JiraIssue[] = page.issues.map((issue) => ({
+    const issues: JiraIssueSummary[] = page.issues.map((issue) => ({
         key: issue.key,
         summary: issue.fields.summary,
         status: issue.fields.status.name,

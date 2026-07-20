@@ -1,5 +1,24 @@
 export interface JiraIssue {
     key: string;
+    url: string;
+    summary: string;
+    type: string;
+    status: string;
+    priority: string | null;
+    assignee: string | null;
+    parent: { key: string; summary: string } | null;
+    labels: string[];
+    created: string;
+    updated: string;
+    originalEstimate: string | null;
+    timeSpent: string | null;
+    description: string | null;
+    customFields?: Record<string, unknown>;
+}
+
+/** Forma reducida que devuelven las búsquedas, sin los campos de detalle. */
+export interface JiraIssueSummary {
+    key: string;
     summary: string;
     status: string;
     assignee: string | null;
@@ -11,7 +30,7 @@ export interface JiraSearchResult {
     count: number;
     /** Hay más resultados de los que caben en el límite pedido. */
     hasMore: boolean;
-    issues: JiraIssue[];
+    issues: JiraIssueSummary[];
 }
 
 export interface JiraUser {
@@ -120,7 +139,7 @@ export interface JiraIssueContext {
     totalComments: number;
     /** Estados a los que se puede mover el issue ahora mismo. */
     availableTransitions: string[];
-    customFields?: Record<string, string | null>;
+    customFields?: Record<string, unknown>;
 }
 
 export interface JiraStaleIssue {

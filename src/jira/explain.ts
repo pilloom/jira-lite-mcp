@@ -1,7 +1,7 @@
 import { adfToText } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
-import { findField } from './fields.js';
+import { findField, readFieldValue } from './fields.js';
 import { getAllFields } from './meta.js';
 import { getTransitions } from './transitions.js';
 
@@ -180,10 +180,10 @@ export async function explainIssue(
                 body: adfToText(comment.body) ?? '',
             }));
 
-        const customFields: Record<string, string | null> = {};
+        const customFields: Record<string, unknown> = {};
 
         for (const field of extra) {
-            customFields[field.name] = adfToText(fields[field.id]);
+            customFields[field.name] = readFieldValue(fields[field.id]);
         }
 
         return {
