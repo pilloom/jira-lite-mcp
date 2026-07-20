@@ -3,6 +3,8 @@ import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { buildCustomFields } from './fields.js';
 import { getIssueTypeFields } from './meta.js';
+import { resolveAccountId } from './users.js';
+import { addWatchers } from './watchers.js';
 
 import type {
     JiraCreateIssueInput,
@@ -30,6 +32,7 @@ const FIELDS_HANDLED_BY_SERVER = new Set(['project', 'issuetype', 'reporter']);
 function buildFields(
     input: JiraCreateIssueInput,
     spec: JiraFieldSpec[],
+    assigneeId?: string,
 ): Record<string, unknown> {
     const fields: Record<string, unknown> = {
         project: { key: input.project },
@@ -45,8 +48,8 @@ function buildFields(
         fields.parent = { key: input.parent };
     }
 
-    if (input.assignee !== undefined) {
-        fields.assignee = { id: input.assignee };
+    if (assigneeId !== undefined) {
+        fields.assignee = { id: assigneeId };
     }
 
     if (input.priority !== undefined) {
@@ -55,6 +58,13 @@ function buildFields(
 
     if (input.labels !== undefined) {
         fields.labels = input.labels;
+    }
+
+    // La estimación se envía sin comprobarla contra el esquema: Jira la acepta
+    // aunque `timetracking` no figure en la pantalla de creación, así que
+    // validarla habría impedido estimar en proyectos donde sí funciona.
+    if (input.originalEstimate !== undefined) {
+        fields.timetracking = { originalEstimate: input.originalEstimate };
     }
 
     Object.assign(
@@ -92,10 +102,28 @@ export async function createIssue(
         // el tipo real de cada campo, que determina cómo serializarlo.
         const meta = await getIssueTypeFields(input.project, input.issueType);
 
+        const assigneeId =
+            input.assignee !== undefined
+                ? await resolveAccountId(input.assignee)
+                : undefined;
+
         const fields = buildFields(
             { ...input, issueType: meta.issueType },
             meta.fields,
+            assigneeId,
         );
+
+        const applied = Object.keys(fields);
+
+        if (input.dryRun === true) {
+            return {
+                dryRun: true,
+                key: null,
+                url: null,
+                applied,
+                fields,
+            };
+        }
 
         const client = createJiraClient();
 
@@ -104,9 +132,20 @@ export async function createIssue(
             { fields },
         );
 
+        const key = response.data.key;
+
+        // Los observadores no forman parte del issue: cada uno se añade con su
+        // propia petición una vez existe.
+        const watchers =
+            input.watchers !== undefined && input.watchers.length > 0
+                ? await addWatchers(key, input.watchers)
+                : undefined;
+
         return {
-            key: response.data.key,
-            url: `${client.defaults.baseURL}/browse/${response.data.key}`,
+            key,
+            url: `${client.defaults.baseURL}/browse/${key}`,
+            applied,
+            ...(watchers !== undefined && { watchers }),
         };
     } catch (error) {
         handleJiraError(error);

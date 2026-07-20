@@ -8,7 +8,7 @@ export const createIssueTool = {
     name: 'jira_create_issue',
 
     description:
-        'Crea un issue en Jira. Valida los campos contra el esquema real del proyecto y del tipo de issue antes de enviarlos, de modo que un payload incorrecto falle sin consumir una clave de issue. Los campos personalizados se indican por su nombre visible o por su identificador. Conviene consultar antes jira_issue_fields para conocer los campos disponibles.',
+        'Crea un issue en Jira. Valida los campos contra el esquema real del proyecto y del tipo de issue antes de enviarlos, de modo que un payload incorrecto falle sin consumir una clave de issue. Los campos personalizados se indican por su nombre visible o por su identificador, y la persona asignada admite correo o nombre además del accountId. Con dryRun se comprueba el resultado sin crear nada. Conviene consultar antes jira_issue_fields para conocer los campos disponibles.',
 
     inputSchema: z.object({
         project: z
@@ -31,7 +31,27 @@ export const createIssueTool = {
         assignee: z
             .string()
             .optional()
-            .describe('accountId de la persona asignada'),
+            .describe(
+                'Persona asignada: correo, nombre visible o accountId. Ejemplo: alguien@example.com',
+            ),
+        originalEstimate: z
+            .string()
+            .optional()
+            .describe(
+                'Estimación inicial en el formato de Jira. Ejemplos: 30m, 1h 30m, 8h',
+            ),
+        watchers: z
+            .array(z.string())
+            .optional()
+            .describe(
+                'Observadores a añadir: correos, nombres visibles o accountIds',
+            ),
+        dryRun: z
+            .boolean()
+            .optional()
+            .describe(
+                'Valida el payload contra el esquema real y devuelve lo que se enviaría, sin crear el issue',
+            ),
         priority: z
             .string()
             .optional()

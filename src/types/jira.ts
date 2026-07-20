@@ -208,25 +208,43 @@ export interface JiraCreateIssueInput {
     summary: string;
     description?: string;
     parent?: string;
+    /** Correo, nombre visible o identificador de cuenta. */
     assignee?: string;
     priority?: string;
     labels?: string[];
+    /** Estimación inicial en el formato de Jira: 30m, 1h 30m, 8h. */
+    originalEstimate?: string;
+    /** Observadores: correos, nombres visibles o identificadores de cuenta. */
+    watchers?: string[];
+    /** Valida el payload y devuelve lo que se enviaría, sin crear nada. */
+    dryRun?: boolean;
     /** Campos personalizados indexados por nombre visible o por identificador. */
     customFields?: Record<string, unknown>;
 }
 
 export interface JiraCreatedIssue {
-    key: string;
-    url: string;
+    key: string | null;
+    url: string | null;
+    /** Identificadores de los campos efectivamente enviados. */
+    applied: string[];
+    dryRun?: boolean;
+    /** Payload que se enviaría; solo en una validación sin crear. */
+    fields?: Record<string, unknown>;
+    watchers?: string[];
 }
 
 export interface JiraUpdateIssueInput {
     issueKey: string;
     summary?: string;
     description?: string;
+    /** Correo, nombre visible o identificador de cuenta. */
     assignee?: string;
     priority?: string;
     labels?: string[];
+    /** Estimación en el formato de Jira: 30m, 1h 30m, 8h. */
+    originalEstimate?: string;
+    /** Observadores a añadir: correos, nombres o identificadores de cuenta. */
+    watchers?: string[];
     /** Campos personalizados indexados por nombre visible o por identificador. */
     customFields?: Record<string, unknown>;
 }
@@ -235,6 +253,7 @@ export interface JiraUpdatedIssue {
     key: string;
     /** Identificadores de los campos efectivamente enviados. */
     updated: string[];
+    watchers?: string[];
 }
 
 export interface JiraTransition {

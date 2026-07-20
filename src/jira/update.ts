@@ -3,6 +3,8 @@ import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { buildCustomFields, findField } from './fields.js';
 import { getEditableFields } from './meta.js';
+import { resolveAccountId } from './users.js';
+import { addWatchers } from './watchers.js';
 
 import type {
     JiraFieldSpec,
@@ -35,6 +37,7 @@ function assertEditable(
 function buildFields(
     input: JiraUpdateIssueInput,
     spec: JiraFieldSpec[],
+    assigneeId?: string,
 ): Record<string, unknown> {
     const fields: Record<string, unknown> = {};
 
@@ -48,9 +51,15 @@ function buildFields(
         fields.description = textToAdf(input.description);
     }
 
-    if (input.assignee !== undefined) {
+    if (assigneeId !== undefined) {
         assertEditable('assignee', '"Persona asignada"', spec, input.issueKey);
-        fields.assignee = { id: input.assignee };
+        fields.assignee = { id: assigneeId };
+    }
+
+    // Como al crear: Jira acepta la estimación aunque `timetracking` no figure
+    // en la pantalla de edición, así que no se comprueba contra el esquema.
+    if (input.originalEstimate !== undefined) {
+        fields.timetracking = { originalEstimate: input.originalEstimate };
     }
 
     if (input.priority !== undefined) {
@@ -72,7 +81,7 @@ function buildFields(
         ),
     );
 
-    if (Object.keys(fields).length === 0) {
+    if (Object.keys(fields).length === 0 && input.watchers === undefined) {
         throw new Error(
             `No se indicó ningún campo que actualizar en ${input.issueKey}`,
         );
@@ -87,15 +96,28 @@ export async function updateIssue(
     try {
         const spec = await getEditableFields(input.issueKey);
 
-        const fields = buildFields(input, spec);
+        const assigneeId =
+            input.assignee !== undefined
+                ? await resolveAccountId(input.assignee)
+                : undefined;
+
+        const fields = buildFields(input, spec, assigneeId);
 
         const client = createJiraClient();
 
-        await client.put(`/rest/api/3/issue/${input.issueKey}`, { fields });
+        if (Object.keys(fields).length > 0) {
+            await client.put(`/rest/api/3/issue/${input.issueKey}`, { fields });
+        }
+
+        const watchers =
+            input.watchers !== undefined && input.watchers.length > 0
+                ? await addWatchers(input.issueKey, input.watchers)
+                : undefined;
 
         return {
             key: input.issueKey,
             updated: Object.keys(fields),
+            ...(watchers !== undefined && { watchers }),
         };
     } catch (error) {
         handleJiraError(error);

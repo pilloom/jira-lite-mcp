@@ -20,7 +20,21 @@ export const updateIssueTool = {
         assignee: z
             .string()
             .optional()
-            .describe('accountId de la persona asignada'),
+            .describe(
+                'Persona asignada: correo, nombre visible o accountId. Ejemplo: alguien@example.com',
+            ),
+        originalEstimate: z
+            .string()
+            .optional()
+            .describe(
+                'Estimación en el formato de Jira. Ejemplos: 30m, 1h 30m, 8h',
+            ),
+        watchers: z
+            .array(z.string())
+            .optional()
+            .describe(
+                'Observadores a añadir: correos, nombres visibles o accountIds',
+            ),
         priority: z
             .string()
             .optional()
