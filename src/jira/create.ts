@@ -129,7 +129,16 @@ function assertPolicyFields(
             continue;
         }
 
-        if (fields[field.id] === undefined) {
+        const value = fields[field.id];
+
+        // Un campo presente pero sin contenido es tan olvido como uno ausente,
+        // y además engaña: aparenta haberse rellenado.
+        if (
+            value === undefined ||
+            value === null ||
+            value === '' ||
+            (Array.isArray(value) && value.length === 0)
+        ) {
             missing.push(`"${field.name}" (${field.id})`);
         }
     }
