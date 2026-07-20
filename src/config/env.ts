@@ -42,6 +42,33 @@ export const env = {
     jiraToken: getEnv('JIRA_TOKEN'),
 };
 
+/**
+ * Campos que el equipo considera obligatorios aunque Jira no los marque como
+ * tales. Jira no avisa de su ausencia, así que sin esta comprobación el olvido
+ * pasa desapercibido hasta que alguien revisa el issue.
+ *
+ * Se define por proyecto —`JIRA_REQUIRED_FIELDS_LAN`— o para todos ellos con
+ * `JIRA_REQUIRED_FIELDS`, en ambos casos como nombres separados por comas.
+ */
+export function getRequiredByPolicy(projectKey: string): string[] {
+    const specific = getEnv(
+        `JIRA_REQUIRED_FIELDS_${projectKey.toUpperCase()}`,
+    );
+
+    const general = getEnv('JIRA_REQUIRED_FIELDS');
+
+    const value = specific ?? general;
+
+    if (value === undefined) {
+        return [];
+    }
+
+    return value
+        .split(',')
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+}
+
 export function requireJiraConfig() {
     if (!env.jiraUrl || !env.jiraEmail || !env.jiraToken) {
         throw new Error(

@@ -152,6 +152,18 @@ pero `jira_search` necesita `Story` o `Bug`: escribir el nombre traducido devuel
 resultados sin dar error. `jira_project_summary` no se ve afectado, porque agrupa por tipo
 sobre los issues ya recuperados.
 
+**Campos obligatorios por convención.** Un equipo puede dar por obligatorio un campo que
+Jira no marca como tal —y cuya ausencia, por tanto, no señala—. `JIRA_REQUIRED_FIELDS` lo
+convierte en un error al crear:
+
+```
+JIRA_REQUIRED_FIELDS_LAN=Team     # solo en el proyecto LAN
+JIRA_REQUIRED_FIELDS=Team         # en todos
+```
+
+No se rellena nada automáticamente: la creación se rechaza para que el valor lo decida
+siempre quien la pide. Con `dryRun` la comprobación se hace igualmente, sin gastar una clave.
+
 **No se pueden eliminar issues.** `jira_delete` cubre comentarios, registros de tiempo y
 enlaces, pero no issues: borrar uno destruye trabajo registrado junto con sus subtareas y deja
 un hueco permanente en la numeración del proyecto. Para retirar un issue de la circulación,

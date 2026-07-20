@@ -1,7 +1,9 @@
+import { getRequiredByPolicy } from '../config/env.js';
+
 import { textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
-import { buildCustomFields } from './fields.js';
+import { buildCustomFields, findField } from './fields.js';
 import { getIssueTypeFields } from './meta.js';
 import { resolveAccountId } from './users.js';
 import { addWatchers } from './watchers.js';
@@ -91,7 +93,52 @@ function buildFields(
         );
     }
 
+    assertPolicyFields(input.project, fields, spec);
+
     return fields;
+}
+
+/**
+ * Exige los campos que el equipo da por obligatorios aunque el esquema no lo
+ * haga. No se rellenan por su cuenta: se rechaza la creación para que el valor
+ * lo decida siempre quien la pide.
+ */
+function assertPolicyFields(
+    projectKey: string,
+    fields: Record<string, unknown>,
+    spec: JiraFieldSpec[],
+): void {
+    const required = getRequiredByPolicy(projectKey);
+
+    if (required.length === 0) {
+        return;
+    }
+
+    const missing: string[] = [];
+
+    for (const name of required) {
+        const field = findField(spec, name);
+
+        if (!field) {
+            // Configurado pero inexistente en este tipo de issue: se avisa en
+            // lugar de callar, porque delata una configuración desfasada.
+            missing.push(
+                `"${name}" (no existe en el tipo ${spec.length > 0 ? 'indicado' : 'seleccionado'}: revisar la configuración)`,
+            );
+
+            continue;
+        }
+
+        if (fields[field.id] === undefined) {
+            missing.push(`"${field.name}" (${field.id})`);
+        }
+    }
+
+    if (missing.length > 0) {
+        throw new Error(
+            `El proyecto ${projectKey} exige por convención del equipo campos que Jira no marca como obligatorios y cuya ausencia no señala: ${missing.join(', ')}. Configurado en JIRA_REQUIRED_FIELDS_${projectKey.toUpperCase()}.`,
+        );
+    }
 }
 
 export async function createIssue(
