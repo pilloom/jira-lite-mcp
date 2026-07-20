@@ -49,7 +49,18 @@ Comprobar que responde:
 claude mcp get jira-lite
 ```
 
-> Tras cambiar el código hay que ejecutar `npm run build`: el servidor arranca desde `dist/`.
+> Tras cambiar el código hay que ejecutar `npm run build` **y reiniciar la sesión**: el
+> cliente arranca el servidor al abrirla y mantiene ese proceso mientras dura, así que hasta
+> entonces sigue sirviendo el código anterior. `/clear` no basta.
+>
+> La herramienta `ping` indica qué código está en ejecución:
+>
+> ```json
+> { "status": "ok", "version": "1.1.0", "built": "2026-07-20T02:16:44.020Z" }
+> ```
+>
+> Si `built` es anterior a la última compilación, la sesión está sirviendo código antiguo.
+> Es la forma de distinguir una capacidad que no existe de una que no está desplegada.
 
 ### Registrar en un proyecto concreto (`.mcp.json`)
 
