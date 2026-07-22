@@ -203,6 +203,8 @@ export interface JiraIssueTypesResult {
 export interface JiraIssueFieldsResult {
     project: string;
     issueType: string;
+    /** Una subtarea hereda de su padre parte de su contexto. */
+    isSubtask: boolean;
     fields: JiraFieldSpec[];
 }
 

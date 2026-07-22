@@ -272,6 +272,7 @@ export async function getIssueTypeFields(
         return {
             project: projectKey,
             issueType: issueType.name,
+            isSubtask: issueType.subtask,
             fields: fields.map(toFieldSpec),
         };
     } catch (error) {

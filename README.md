@@ -175,6 +175,11 @@ JIRA_REQUIRED_FIELDS=Team         # en todos
 No se rellena nada automáticamente: la creación se rechaza para que el valor lo decida
 siempre quien la pide. Con `dryRun` la comprobación se hace igualmente, sin gastar una clave.
 
+En una subtarea el requisito se comprueba **contra su issue padre**, porque hereda de él parte
+del contexto. Algunos campos —el equipo asignado, por ejemplo— Jira ni siquiera admite
+enviarlos en una subtarea: los rechaza indicando que se heredan. Exigirlos en el payload
+haría imposible crear subtareas en un proyecto con esta política.
+
 **No se pueden eliminar issues.** `jira_delete` cubre comentarios, registros de tiempo y
 enlaces, pero no issues: borrar uno destruye trabajo registrado junto con sus subtareas y deja
 un hueco permanente en la numeración del proyecto. Para retirar un issue de la circulación,

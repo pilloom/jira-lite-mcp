@@ -96,28 +96,63 @@ function buildFields(
         );
     }
 
-    assertPolicyFields(input.project, fields, spec);
-
     return fields;
+}
+
+function isEmpty(value: unknown): boolean {
+    // Un campo presente pero sin contenido es tan olvido como uno ausente, y
+    // además engaña: aparenta haberse rellenado.
+    return (
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (Array.isArray(value) && value.length === 0)
+    );
+}
+
+/**
+ * Lee del issue padre los campos indicados. Una subtarea hereda parte del
+ * contexto de su principal, de modo que un campo exigido puede estar cubierto
+ * sin figurar en su propio payload.
+ */
+async function readFromParent(
+    parentKey: string,
+    fieldIds: string[],
+): Promise<Record<string, unknown>> {
+    const client = createJiraClient();
+
+    const response = await client.get<{ fields: Record<string, unknown> }>(
+        `/rest/api/3/issue/${parentKey}`,
+        { params: { fields: fieldIds.join(',') } },
+    );
+
+    return response.data.fields;
 }
 
 /**
  * Exige los campos que el equipo da por obligatorios aunque el esquema no lo
  * haga. No se rellenan por su cuenta: se rechaza la creación para que el valor
  * lo decida siempre quien la pide.
+ *
+ * En una subtarea el requisito se comprueba contra el principal. Jira hereda
+ * ahí parte del contexto —y llega a rechazar que se envíe explícitamente, como
+ * ocurre con el equipo asignado—, así que exigirlo en el payload haría
+ * imposible crear subtareas en un proyecto con esta política.
  */
-function assertPolicyFields(
-    projectKey: string,
+async function assertPolicyFields(
+    input: JiraCreateIssueInput,
     fields: Record<string, unknown>,
     spec: JiraFieldSpec[],
-): void {
-    const required = getRequiredByPolicy(projectKey);
+    isSubtask: boolean,
+): Promise<void> {
+    const required = getRequiredByPolicy(input.project);
 
     if (required.length === 0) {
         return;
     }
 
-    const missing: string[] = [];
+    const unknownFields: string[] = [];
+    const pending: JiraFieldSpec[] = [];
 
     for (const name of required) {
         const field = findField(spec, name);
@@ -125,32 +160,50 @@ function assertPolicyFields(
         if (!field) {
             // Configurado pero inexistente en este tipo de issue: se avisa en
             // lugar de callar, porque delata una configuración desfasada.
-            missing.push(
-                `"${name}" (no existe en el tipo ${spec.length > 0 ? 'indicado' : 'seleccionado'}: revisar la configuración)`,
-            );
+            unknownFields.push(`"${name}"`);
 
             continue;
         }
 
-        const value = fields[field.id];
-
-        // Un campo presente pero sin contenido es tan olvido como uno ausente,
-        // y además engaña: aparenta haberse rellenado.
-        if (
-            value === undefined ||
-            value === null ||
-            value === '' ||
-            (Array.isArray(value) && value.length === 0)
-        ) {
-            missing.push(`"${field.name}" (${field.id})`);
+        if (isEmpty(fields[field.id])) {
+            pending.push(field);
         }
     }
 
-    if (missing.length > 0) {
+    if (unknownFields.length > 0) {
         throw new Error(
-            `El proyecto ${projectKey} exige por convención del equipo campos que Jira no marca como obligatorios y cuya ausencia no señala: ${missing.join(', ')}. Configurado en JIRA_REQUIRED_FIELDS_${projectKey.toUpperCase()}.`,
+            `La política de ${input.project} exige campos que no existen al crear un issue de tipo ${input.issueType}: ${unknownFields.join(', ')}. Revisar JIRA_REQUIRED_FIELDS_${input.project.toUpperCase()}.`,
         );
     }
+
+    if (pending.length === 0) {
+        return;
+    }
+
+    const inherited =
+        isSubtask && input.parent !== undefined
+            ? await readFromParent(
+                  input.parent,
+                  pending.map((field) => field.id),
+              )
+            : {};
+
+    const missing = pending
+        .filter((field) => isEmpty(inherited[field.id]))
+        .map((field) => `"${field.name}" (${field.id})`);
+
+    if (missing.length === 0) {
+        return;
+    }
+
+    const where =
+        isSubtask && input.parent !== undefined
+            ? ` Al ser una subtarea, el valor se hereda de ${input.parent}: hay que establecerlo ahí, no en la subtarea.`
+            : '';
+
+    throw new Error(
+        `El proyecto ${input.project} exige por convención del equipo campos que Jira no marca como obligatorios y cuya ausencia no señala: ${missing.join(', ')}.${where} Configurado en JIRA_REQUIRED_FIELDS_${input.project.toUpperCase()}.`,
+    );
 }
 
 /**
@@ -197,6 +250,13 @@ export async function createIssue(
             { ...input, issueType: meta.issueType },
             meta.fields,
             assigneeId,
+        );
+
+        await assertPolicyFields(
+            { ...input, issueType: meta.issueType },
+            fields,
+            meta.fields,
+            meta.isSubtask,
         );
 
         const applied = Object.keys(fields);
