@@ -1,7 +1,7 @@
 # Plan de trabajo — jira-lite-mcp
 
 > Documento vivo.
-> Última actualización: 2026-07-18
+> Última actualización: 2026-07-20
 
 ---
 
@@ -32,8 +32,9 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**15 herramientas.** Compila en verde; todas verificadas contra un Jira real.
-**Instalado en Claude Code** (`--scope user`) y en uso.
+**15 herramientas · versión 1.1.0.** Compila en verde; todas verificadas contra un Jira real.
+**Instalado en Claude Code** (`--scope user`) y adoptado por dos equipos, cuyo uso real ha
+guiado el pulido de §7.7 y §7.8.
 
 | Herramienta | Estado | Módulo `jira/` |
 |---|---|---|
@@ -56,7 +57,7 @@ parámetro o a la guía del repo consumidor.
 **Pendiente:** nada previsto. Lo siguiente sale del uso real.
 
 > ✅ **Verificado en MCP Inspector (2026-07-18).** Pasada completa con
-> `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las 8 herramientas se
+> `npx @modelcontextprotocol/inspector --cli node dist/server.js`. Las herramientas se
 > registran, exponen sus esquemas JSON con los parámetros correctos, responden a `tools/call`
 > y propagan los errores como `isError: true` con un mensaje legible.
 >
@@ -150,13 +151,15 @@ proyecto debía soportar: crear un issue de cualquier tipo con los campos que le
 | 10 | `jira_add_comment`, `jira_add_worklog` | 2 | ✅ |
 | 11 | Instalación en Claude Code | — | ✅ |
 | 12 | `jira_get_worklog`, `jira_delete` | 3 | ✅ promovidas por uso real |
+| 13 | Pulido guiado por dos equipos en uso real (§7.7) | — | ✅ |
+| 14 | Herencia del padre en subtareas (§7.6) | — | ✅ |
 
 **Criterio para promover algo de la fase 3:** que el uso lo pida, no que parezca buena idea.
 Las tareas 5 y 6 se implementaron porque un ticket real las necesitó.
 
 ---
 
-## 7. Hallazgos verificados contra Jira (2026-07-18)
+## 7. Hallazgos verificados contra Jira
 
 Todos reproducidos contra la REST API v3. **Ninguno cambia el diseño genérico**, pero varios
 corrigieron implementaciones o creencias equivocadas.
@@ -249,7 +252,50 @@ Ya trasladados a las tres guías del equipo:
    configuración de Jira por el equipo el 2026-07-18; `jira_create_issue` lo admite desde
    entonces **sin cambios en el código**, por consultar `createmeta` en cada llamada.
 
-### 7.6 Issues creados
+### 7.6 Lo que `createmeta` no anticipa: la herencia en subtareas
+
+`createmeta` **declara que Team está disponible** en el tipo `Subtarea`. Al crear, Jira lo
+rechaza:
+
+```
+400  customfield_10001: La incidencia "{0}" es una subtarea y hereda la asignación
+     de equipo de la principal.
+```
+
+Y la subtarea **acaba teniendo el Team del padre** sin haberlo enviado (verificado: padre
+`Backend` → subtarea `Backend`).
+
+Es el mismo patrón de §7.4 en otra forma: la pantalla de creación no describe fielmente lo que
+la API acepta. Consecuencia para el diseño: **una comprobación de política no puede mirar solo
+el payload**. En una subtarea el valor vive en el padre, así que `assertPolicyFields` lo lee de
+ahí. Exigirlo en el payload dejaba la creación de subtareas sin salida posible —el guard pedía
+justo lo que la API prohibía—.
+
+### 7.7 Pulido guiado por uso real (2026-07-19 / 20)
+
+Dos equipos adoptaron el servidor y reportaron carencias. Lo que salió de ahí:
+
+| Reportado | Causa | Resolución |
+|---|---|---|
+| Un campo complejo llegaba como `""` | Se aplanaba como ADF cualquier objeto | `readFieldValue`: traduce lo que reconoce, devuelve crudo lo demás. **Nunca `""`** |
+| No se podía estimar | La estimación se validaba contra `createmeta`, donde no figura | Se envía sin validar: Jira la acepta igualmente |
+| `assignee` obligaba a `accountId` | — | Acepta correo y nombre visible, resueltos contra la instancia |
+| No se sabía si un campo se aplicó | La creación solo devolvía `key` y `url` | Devuelve `applied`, `timetracking` y `watchers` |
+| Un error de Jira llegaba vacío | Solo se leía `errorMessages`; los rechazos por campo van en `errors` | Se leen ambos |
+
+Añadidos en la misma tanda: `dryRun`, `watchers`, `fields` en `jira_get_issue`, aviso de JQL
+con tipos traducidos, `commentPublished` en las transiciones y `JIRA_REQUIRED_FIELDS`.
+
+### 7.8 Saber qué código se está ejecutando
+
+El coste mayor que reportó un equipo no fue una carencia, sino **no poder distinguir una
+capacidad no implementada de una no desplegada**: el cliente arranca el servidor al abrir la
+sesión y mantiene ese proceso, así que tras recompilar sigue sirviendo el código anterior.
+
+`ping` devuelve ahora `version` y `built`. La fecha de compilación es la señal fiable —la
+versión solo cambia cuando alguien se acuerda de subirla—.
+
+### 7.9 Issues creados
 
 | Issue | Qué es | Estado |
 |---|---|---|
