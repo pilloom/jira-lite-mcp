@@ -9,6 +9,7 @@ import { transitionIssueTool } from './transition-issue.js';
 import { linkIssuesTool } from './link-issues.js';
 import { updateIssueTool } from './update-issue.js';
 import { myWorkTool } from './my-work.js';
+import { listProjectsTool } from './list-projects.js';
 import { projectSummaryTool } from './project-summary.js';
 import { explainIssueTool } from './explain-issue.js';
 import { addCommentTool } from './add-comment.js';
@@ -98,6 +99,15 @@ export function registerTools(server: McpServer) {
             inputSchema: myWorkTool.inputSchema,
         },
         async (args) => myWorkTool.handler(args),
+    );
+
+    server.registerTool(
+        listProjectsTool.name,
+        {
+            description: listProjectsTool.description,
+            inputSchema: listProjectsTool.inputSchema,
+        },
+        async (args) => listProjectsTool.handler(args),
     );
 
     server.registerTool(

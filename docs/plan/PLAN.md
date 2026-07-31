@@ -32,7 +32,7 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**15 herramientas · versión 1.1.0.** Compila en verde; todas verificadas contra un Jira real.
+**16 herramientas · versión 1.1.0.** Compila en verde; todas verificadas contra un Jira real.
 **Instalado en Claude Code** (`--scope user`) y adoptado por dos equipos, cuyo uso real ha
 guiado el pulido de §7.7 y §7.8.
 
@@ -47,6 +47,7 @@ guiado el pulido de §7.7 y §7.8.
 | `jira_link_issues` | ✅ | `links.ts` |
 | `jira_update_issue` | ✅ | `update.ts` |
 | `jira_my_work` | ✅ | `my-work.ts`, `users.ts` |
+| `jira_list_projects` | ✅ | `projects.ts` |
 | `jira_project_summary` | ✅ | `project-summary.ts` |
 | `jira_explain_issue` | ✅ | `explain.ts` |
 | `jira_add_comment` | ✅ | `comments.ts` |
@@ -341,6 +342,20 @@ ruido.
 
 Parámetros opcionales: `project`, `limit`, `includeDone`. Sin `project` busca en **todos** los
 proyectos del sitio — verificado con issues de `LAN` e `IB` en la misma respuesta.
+
+#### ✅ `jira_list_projects`
+
+Clave, nombre, tipo y responsable de los proyectos visibles para la cuenta. Es el punto de
+entrada que faltaba: **todas las demás herramientas piden la clave del proyecto**, y sin esta
+había que adivinarla a partir del nombre o pedírsela a quien pregunta.
+
+Usa `/rest/api/3/project/search`, que **sí devuelve el total** de coincidencias —a diferencia
+del endpoint de JQL de §7.4—, así que aquí `total` y `hasMore` son datos reales de la API y no
+una aproximación. El parámetro `query` filtra por nombre o clave en el servidor.
+
+`lead` requiere `expand=lead`: la respuesta base no trae el responsable.
+
+Verificado contra el sitio real: 4 proyectos, y `query=lanza` resuelve `Lanzadera` → `LAN`.
 
 #### ✅ `jira_project_summary`
 

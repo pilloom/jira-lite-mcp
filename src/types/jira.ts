@@ -153,6 +153,22 @@ export interface JiraStaleIssue {
     daysSinceUpdate: number;
 }
 
+export interface JiraProject {
+    key: string;
+    name: string;
+    /** `software`, `service_desk`, `business`… tal y como lo clasifica Jira. */
+    type: string;
+    lead: string | null;
+}
+
+export interface JiraProjectList {
+    /** Proyectos devueltos; puede ser menos que `total` si se topó el límite. */
+    count: number;
+    total: number;
+    hasMore: boolean;
+    projects: JiraProject[];
+}
+
 export interface JiraProjectSummary {
     project: string;
     /** Issues abiertos considerados; parcial si `truncated` es cierto. */

@@ -119,6 +119,7 @@ proyecto, luego usuario— y se usa la definición completa del que gane, sin co
 | Herramienta | Para qué |
 |---|---|
 | `jira_my_work` | Issues asignados y pendientes. *«¿Qué tengo pendiente en Jira?»* |
+| `jira_list_projects` | Proyectos visibles, con su clave. *«¿Qué proyectos hay?»* |
 | `jira_project_summary` | Estado de un proyecto: abiertos, reparto por estado, tipo y prioridad, sin asignar y estancados |
 | `jira_explain_issue` | Un issue con todo su contexto: padre, subtareas, enlaces, comentarios y transiciones posibles |
 | `jira_get_issue` | Datos básicos de un issue |
