@@ -137,6 +137,8 @@ proyecto, luego usuario— y se usa la definición completa del que gane, sin co
 | `jira_link_issues` | Enlazar dos issues |
 | `jira_add_comment` | Comentar |
 | `jira_add_worklog` | Registrar tiempo |
+| `jira_create_sprint` | Crear un sprint en el tablero scrum del proyecto |
+| `jira_move_to_sprint` | Mover issues a un sprint |
 | `jira_delete` | Eliminar un comentario, un registro de tiempo o un enlace |
 
 ---
@@ -185,6 +187,26 @@ haría imposible crear subtareas en un proyecto con esta política.
 enlaces, pero no issues: borrar uno destruye trabajo registrado junto con sus subtareas y deja
 un hueco permanente en la numeración del proyecto. Para retirar un issue de la circulación,
 moverlo a un estado final con `jira_transition_issue`.
+
+**Los sprints cuelgan del tablero, no del proyecto.** Y solo los tableros scrum los admiten:
+en un proyecto kanban no hay dónde crearlos. `jira_create_sprint` acepta la clave del proyecto
+y localiza su tablero scrum; si hay más de uno, el error los enumera con su `boardId` en vez de
+elegir por su cuenta.
+
+**Crear un sprint no lo arranca.** Queda en estado `future`. Iniciarlo cierra el anterior y fija
+el compromiso del equipo, así que esa decisión se deja en Jira.
+
+```json
+{ "project": "LAN", "name": "Sprint 12", "startDate": "2026-09-01", "endDate": "2026-09-15" }
+```
+
+Una fecha sin hora se ancla a medianoche UTC: Jira solo muestra el día, y anclarla a la hora
+local la desplazaría al día anterior para quien esté al oeste del meridiano.
+
+**Un issue pertenece a un solo sprint.** `jira_move_to_sprint` lo saca del anterior, así que
+sirve igual para poblar un sprint nuevo que para reubicar trabajo. La API mueve como mucho 50
+issues por petición y aplica cada una entera o ninguna: con más de 50 la respuesta indica
+cuáles se movieron y qué lote falló, en lugar de dar por hecho que se movió todo.
 
 **Las búsquedas no devuelven el total de coincidencias.** El endpoint de Jira pagina y no
 informa del total, así que `jira_search` devuelve cuántos issues trae (`count`) y si quedan más

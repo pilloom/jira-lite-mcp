@@ -312,3 +312,51 @@ export interface JiraLinkResult {
     relation: string;
     to: string;
 }
+
+export interface JiraBoard {
+    id: number;
+    name: string;
+    /** `scrum` o `kanban`: solo los scrum tienen sprints. */
+    type: string;
+}
+
+export interface JiraCreateSprintInput {
+    /** Clave del proyecto; se usa para localizar su tablero scrum. */
+    project?: string;
+    /** Tablero concreto, cuando el proyecto tiene más de uno. */
+    boardId?: number;
+    name: string;
+    /** Fecha suelta (2026-08-15) o instante ISO 8601. */
+    startDate?: string;
+    endDate?: string;
+    goal?: string;
+}
+
+export interface JiraSprint {
+    id: number;
+    name: string;
+    /** `future` recién creado: crear un sprint no lo arranca. */
+    state: string;
+    board: JiraBoard | null;
+    startDate: string | null;
+    endDate: string | null;
+    goal: string | null;
+}
+
+export interface JiraSprintMoveResult {
+    sprint: {
+        id: number;
+        name: string;
+        state: string;
+    };
+    requested: number;
+    moved: string[];
+    /**
+     * Lotes rechazados. El endpoint mueve como mucho 50 issues por petición, de
+     * modo que una llamada grande puede salir bien en parte.
+     */
+    failed?: Array<{
+        issues: string[];
+        error: string;
+    }>;
+}

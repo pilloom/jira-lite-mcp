@@ -32,7 +32,7 @@ parámetro o a la guía del repo consumidor.
 
 ## 2. Estado actual
 
-**16 herramientas · versión 1.1.0.** Compila en verde; todas verificadas contra un Jira real.
+**18 herramientas · versión 1.1.0.** Compila en verde; todas verificadas contra un Jira real.
 **Instalado en Claude Code** (`--scope user`) y adoptado por dos equipos, cuyo uso real ha
 guiado el pulido de §7.7 y §7.8.
 
@@ -54,6 +54,8 @@ guiado el pulido de §7.7 y §7.8.
 | `jira_add_worklog` | ✅ | `worklog.ts` |
 | `jira_get_worklog` | ✅ | `worklog.ts` |
 | `jira_delete` | ✅ | `delete.ts` |
+| `jira_create_sprint` | ✅ | `sprints.ts` |
+| `jira_move_to_sprint` | ✅ | `sprints.ts` |
 
 **Pendiente:** nada previsto. Lo siguiente sale del uso real.
 
@@ -296,7 +298,32 @@ sesión y mantiene ese proceso, así que tras recompilar sigue sirviendo el cód
 `ping` devuelve ahora `version` y `built`. La fecha de compilación es la señal fiable —la
 versión solo cambia cuando alguien se acuerda de subirla—.
 
-### 7.9 Issues creados
+### 7.9 Los sprints están en otra API
+
+`jira_create_sprint` y `jira_move_to_sprint` son las primeras herramientas que no hablan con
+`/rest/api/3`, sino con `/rest/agile/1.0`. El cliente sirve igual —misma autenticación y misma
+base—, pero el modelo de datos no coincide con el del resto del servidor:
+
+- **Un sprint no pertenece al proyecto sino a un tablero**, y solo los de tipo `scrum` los
+  admiten. `originBoardId` es obligatorio al crear. Quien pide «crea el sprint de LAN» no tiene
+  por qué saberlo, así que el tablero se resuelve desde la clave del proyecto; con varios
+  tableros scrum el error los enumera con su `boardId` en lugar de elegir uno.
+- **El nombre de un sprint solo es único dentro de su tablero**, de modo que resolverlo por
+  nombre exige el proyecto. Un sprint cerrado no admite issues: se distingue de uno inexistente
+  al buscar, porque decir «no existe» mandaría a crearlo de nuevo.
+- **Mover issues está limitado a 50 por petición**, y cada una se aplica entera o ninguna. Con
+  más de 50 hay varios lotes y unos pueden salir bien y otros no: se informa de cuáles se
+  movieron, en la línea de §7.7 sobre operaciones compuestas. Si no se movió ninguno, es un
+  error, no un resultado parcial.
+
+Crear un sprint **no lo arranca** —queda en `future`—. Iniciarlo cierra el anterior y fija el
+compromiso del equipo: es una decisión de proceso, no de herramienta, y por eso se deja fuera,
+igual que el borrado de issues.
+
+Verificado contra los cuatro proyectos de la instancia: los cuatro tienen un único tablero
+scrum, así que la resolución por clave de proyecto basta y `boardId` queda como escape.
+
+### 7.10 Issues creados
 
 | Issue | Qué es | Estado |
 |---|---|---|
@@ -472,7 +499,8 @@ src/
 │   ├── users.ts             ⏳ fase 1
 │   ├── my-work.ts           ⏳ fase 1
 │   ├── project-summary.ts   ⏳ fase 1
-│   └── worklog.ts           ⏳ fase 2
+│   ├── worklog.ts           ⏳ fase 2
+│   └── sprints.ts           ✅ tableros y sprints (/rest/agile/1.0)
 ├── tools/
 │   ├── index.ts
 │   ├── ping.ts              ✅
@@ -487,7 +515,9 @@ src/
 │   ├── project-summary.ts   ⏳ fase 1
 │   ├── explain-issue.ts     ⏳ fase 1
 │   ├── add-comment.ts       ⏳ fase 2
-│   └── add-worklog.ts       ⏳ fase 2
+│   ├── add-worklog.ts       ⏳ fase 2
+│   ├── create-sprint.ts     ✅
+│   └── move-to-sprint.ts    ✅
 └── types/
     └── jira.ts
 ```
