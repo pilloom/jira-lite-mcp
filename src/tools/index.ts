@@ -16,6 +16,8 @@ import { addCommentTool } from './add-comment.js';
 import { addWorklogTool } from './add-worklog.js';
 import { getWorklogTool } from './get-worklog.js';
 import { deleteTool } from './delete.js';
+import { createSprintTool } from './create-sprint.js';
+import { moveToSprintTool } from './move-to-sprint.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -162,5 +164,23 @@ export function registerTools(server: McpServer) {
             inputSchema: deleteTool.inputSchema,
         },
         async (args) => deleteTool.handler(args),
+    );
+
+    server.registerTool(
+        createSprintTool.name,
+        {
+            description: createSprintTool.description,
+            inputSchema: createSprintTool.inputSchema,
+        },
+        async (args) => createSprintTool.handler(args),
+    );
+
+    server.registerTool(
+        moveToSprintTool.name,
+        {
+            description: moveToSprintTool.description,
+            inputSchema: moveToSprintTool.inputSchema,
+        },
+        async (args) => moveToSprintTool.handler(args),
     );
 }
