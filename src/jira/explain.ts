@@ -1,8 +1,11 @@
-import { adfToText } from './adf.js';
+import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
-import { findField, readFieldValue } from './fields.js';
-import { getAllFields } from './meta.js';
+import {
+    extraFieldIds,
+    readExtraFields,
+    resolveExtraFields,
+} from './extra-fields.js';
 import { getTransitions } from './transitions.js';
 
 import type {
@@ -87,32 +90,6 @@ function toRelated(issue: JiraApiRelatedIssue): JiraSubtask {
     };
 }
 
-/**
- * Resuelve los campos pedidos por nombre contra el catálogo de la instancia y
- * devuelve los identificadores a solicitar junto con su nombre legible.
- */
-async function resolveExtraFields(
-    names: string[],
-): Promise<Array<{ id: string; name: string }>> {
-    if (names.length === 0) {
-        return [];
-    }
-
-    const catalog = await getAllFields();
-
-    return names.map((name) => {
-        const field = findField(catalog, name);
-
-        if (!field) {
-            throw new Error(
-                `El campo "${name}" no existe en esta instancia de Jira.`,
-            );
-        }
-
-        return { id: field.id, name: field.name };
-    });
-}
-
 export async function explainIssue(
     issueKey: string,
     extraFieldNames: string[] = [],
@@ -127,7 +104,7 @@ export async function explainIssue(
         const [response, transitions] = await Promise.all([
             client.get<JiraApiIssueContext>(`/rest/api/3/issue/${issueKey}`, {
                 params: {
-                    fields: [...BASE_FIELDS, ...extra.map((f) => f.id)].join(','),
+                    fields: [...BASE_FIELDS, ...extraFieldIds(extra)].join(','),
                 },
             }),
             getTransitions(issueKey),
@@ -177,14 +154,14 @@ export async function explainIssue(
                 id: comment.id,
                 author: comment.author.displayName,
                 created: comment.created.slice(0, 10),
-                body: adfToText(comment.body) ?? '',
+                body: adfToMarkdown(comment.body) ?? '',
             }));
 
-        const customFields: Record<string, unknown> = {};
-
-        for (const field of extra) {
-            customFields[field.name] = readFieldValue(fields[field.id]);
-        }
+        const customFields = readExtraFields(
+            extra,
+            response.data.key,
+            fields,
+        );
 
         return {
             key: response.data.key,
@@ -198,7 +175,7 @@ export async function explainIssue(
             updated: fields.updated.slice(0, 10),
             labels: fields.labels,
             parent: fields.parent ? toRelated(fields.parent) : null,
-            description: adfToText(fields.description),
+            description: adfToMarkdown(fields.description),
             subtasks: (fields.subtasks ?? []).map(toRelated),
             links,
             comments,

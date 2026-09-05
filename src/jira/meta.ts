@@ -170,19 +170,7 @@ function toFieldSpec(field: JiraApiField): JiraFieldSpec {
 
 let fieldCatalog: JiraFieldSpec[] | null = null;
 
-/**
- * Catálogo de todos los campos de la instancia, para resolver por nombre los
- * que no aparecen en las pantallas de creación o edición —al leer un issue no
- * hay un contexto que acote los campos disponibles—.
- *
- * Se cachea por proceso: la definición de los campos no cambia durante una
- * sesión y la consulta devuelve el catálogo entero.
- */
-export async function getAllFields(): Promise<JiraFieldSpec[]> {
-    if (fieldCatalog !== null) {
-        return fieldCatalog;
-    }
-
+async function fetchAllFields(): Promise<JiraFieldSpec[]> {
     try {
         const client = createJiraClient();
 
@@ -190,14 +178,40 @@ export async function getAllFields(): Promise<JiraFieldSpec[]> {
             Array<Omit<JiraApiField, 'required'> & { id: string }>
         >('/rest/api/3/field');
 
-        fieldCatalog = response.data.map((field) =>
+        return response.data.map((field) =>
             toFieldSpec({ ...field, fieldId: field.id, required: false }),
         );
-
-        return fieldCatalog;
     } catch (error) {
         handleJiraError(error);
     }
+}
+
+/**
+ * Catálogo de todos los campos de la instancia, para resolver por nombre los
+ * que no aparecen en las pantallas de creación o edición —al leer un issue no
+ * hay un contexto que acote los campos disponibles—.
+ *
+ * Se cachea por proceso: la consulta devuelve el catálogo entero y se repite
+ * en cada lectura que pida campos por su nombre.
+ */
+export async function getAllFields(): Promise<JiraFieldSpec[]> {
+    fieldCatalog ??= await fetchAllFields();
+
+    return fieldCatalog;
+}
+
+/**
+ * Vuelve a pedir el catálogo y sustituye el cacheado.
+ *
+ * Un cliente MCP mantiene abierto el proceso del servidor mientras dura la
+ * sesión, así que un campo creado en Jira entretanto no está en el catálogo
+ * que se cacheó al empezar. Sin esto se puede escribir un campo y no poder
+ * leerlo hasta reiniciar, con un error que además afirma que no existe.
+ */
+export async function refreshAllFields(): Promise<JiraFieldSpec[]> {
+    fieldCatalog = await fetchAllFields();
+
+    return fieldCatalog;
 }
 
 /**

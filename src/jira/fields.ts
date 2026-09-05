@@ -1,4 +1,5 @@
-import { adfToText, isAdfDocument, textToAdf } from './adf.js';
+import { adfToMarkdown, isAdfDocument } from './adf.js';
+import { markdownToAdf } from './markdown.js';
 import { normalizeName } from './names.js';
 
 import type { JiraFieldSpec } from '../types/jira.js';
@@ -22,7 +23,7 @@ export function readFieldValue(value: unknown): unknown {
     }
 
     if (isAdfDocument(value)) {
-        return adfToText(value);
+        return adfToMarkdown(value);
     }
 
     if (Array.isArray(value)) {
@@ -47,19 +48,40 @@ export function readFieldValue(value: unknown): unknown {
 }
 
 /**
- * Localiza un campo por su identificador o por su nombre visible, tolerando
- * diferencias de mayúsculas y acentos: el nombre depende del idioma del sitio.
+ * Localiza los campos que responden a un identificador o a un nombre visible,
+ * tolerando diferencias de mayúsculas y acentos: el nombre depende del idioma
+ * del sitio.
+ *
+ * Devuelve una lista porque el nombre no identifica: una instancia puede tener
+ * varios campos llamados igual, uno por proyecto. El identificador sí es único,
+ * de modo que cuando coincide se devuelve solo ese.
+ */
+export function findFields(
+    fields: JiraFieldSpec[],
+    nameOrId: string,
+): JiraFieldSpec[] {
+    const wanted = nameOrId.trim();
+
+    const byId = fields.find((field) => field.id === wanted);
+
+    if (byId) {
+        return [byId];
+    }
+
+    const needle = normalizeName(wanted);
+
+    return fields.filter((field) => normalizeName(field.name) === needle);
+}
+
+/**
+ * Primera coincidencia, para quien busca un campo del que ya conoce el
+ * identificador y por tanto no puede toparse con un nombre ambiguo.
  */
 export function findField(
     fields: JiraFieldSpec[],
     nameOrId: string,
 ): JiraFieldSpec | undefined {
-    const needle = normalizeName(nameOrId);
-
-    return fields.find(
-        (field) =>
-            field.id === nameOrId.trim() || normalizeName(field.name) === needle,
-    );
+    return findFields(fields, nameOrId)[0];
 }
 
 /**
@@ -73,7 +95,7 @@ export function serializeValue(field: JiraFieldSpec, value: unknown): unknown {
     }
 
     if (field.type === 'string' && typeof value === 'string') {
-        return field.custom === 'textarea' ? textToAdf(value) : value;
+        return field.custom === 'textarea' ? markdownToAdf(value) : value;
     }
 
     if (typeof value !== 'string') {
@@ -109,7 +131,17 @@ export function buildCustomFields(
     const fields: Record<string, unknown> = {};
 
     for (const [nameOrId, value] of Object.entries(customFields)) {
-        const field = findField(spec, nameOrId);
+        const candidates = findFields(spec, nameOrId);
+
+        if (candidates.length > 1) {
+            const ids = candidates.map((candidate) => candidate.id).join(', ');
+
+            throw new Error(
+                `Varios campos se llaman "${nameOrId}" ${context}: ${ids}. Indicar cuál por su identificador.`,
+            );
+        }
+
+        const field = candidates[0];
 
         if (!field) {
             const available = spec

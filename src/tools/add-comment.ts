@@ -6,11 +6,11 @@ export const addCommentTool = {
     name: 'jira_add_comment',
 
     description:
-        'Añade un comentario a un issue de Jira. El texto se envía en texto plano y se convierte al formato que espera la API, conservando los saltos de línea.',
+        'Añade un comentario a un issue de Jira. El texto admite markdown —listas de tareas, listas, encabezados, negrita, código y enlaces— y se convierte al formato que espera la API, conservando los saltos de línea.',
 
     inputSchema: z.object({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
-        body: z.string().describe('Texto del comentario'),
+        body: z.string().describe('Texto del comentario, en markdown'),
     }),
 
     async handler(args: { issueKey: string; body: string }) {

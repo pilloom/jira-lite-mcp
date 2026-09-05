@@ -1,83 +1,299 @@
 /**
  * Atlassian Document Format: el formato con el que la API v3 representa los
- * campos de texto rico (descripciones, comentarios). Este módulo aísla su
- * serialización para que el resto del código trabaje con texto plano.
+ * campos de texto rico (descripciones, comentarios, textarea personalizados).
+ *
+ * Este módulo lo traduce a markdown en lugar de aplanarlo a texto corrido: la
+ * estructura —listas de tareas con su estado, encabezados, énfasis, código— es
+ * información del campo, y perderla al leer hace indistinguible una lista de
+ * criterios de un párrafo suelto. La dirección contraria vive en `markdown.ts`.
  */
 
-interface AdfTextNode {
-    type: 'text';
-    text: string;
+export interface AdfMark {
+    type: string;
+    attrs?: {
+        href?: string;
+    };
 }
 
-interface AdfParagraphNode {
-    type: 'paragraph';
-    content?: AdfTextNode[];
-}
-
-export interface AdfDocument {
-    type: 'doc';
-    version: 1;
-    content: AdfParagraphNode[];
-}
-
-interface AdfNode {
+export interface AdfNode {
     type?: string;
     text?: string;
+    marks?: AdfMark[];
     content?: AdfNode[];
     attrs?: {
         text?: string;
         shortName?: string;
         url?: string;
+        href?: string;
+        level?: number;
+        language?: string;
+        state?: string;
+        localId?: string;
+        timestamp?: string;
+        order?: number;
     };
 }
 
+export interface AdfDocument {
+    type: 'doc';
+    version: 1;
+    content: AdfNode[];
+}
+
+const LIST_TYPES = new Set(['bulletList', 'orderedList', 'taskList']);
+
 /**
- * Nodos cuyos hijos son bloques independientes y por tanto se separan con un
- * salto de línea. En el resto —párrafos, encabezados— los hijos son fragmentos
- * de una misma línea y se concatenan sin separador.
+ * Nodos que ocupan líneas propias. Sirve para decidir si un nodo desconocido
+ * es un contenedor de bloques —sus hijos se separan— o un fragmento en línea.
  */
-const BLOCK_CONTAINERS = new Set([
-    'doc',
+const BLOCK_TYPES = new Set([
+    'paragraph',
+    'heading',
+    'codeBlock',
+    'rule',
     'blockquote',
-    'listItem',
-    'taskList',
-    'table',
-    'tableRow',
-    'tableCell',
-    'tableHeader',
     'panel',
+    'table',
+    'mediaSingle',
+    'mediaGroup',
+    'expand',
+    'nestedExpand',
+    ...LIST_TYPES,
 ]);
 
-function nodeToText(node: AdfNode): string {
+function isList(node: AdfNode): boolean {
+    return LIST_TYPES.has(node.type ?? '');
+}
+
+/**
+ * Envuelve un fragmento con la sintaxis markdown de sus marcas, de dentro
+ * hacia fuera. Un fragmento en blanco se deja intacto: `** **` no es énfasis
+ * en markdown, solo dos asteriscos sueltos.
+ */
+function applyMarks(text: string, marks: AdfMark[] = []): string {
+    if (text.trim().length === 0) {
+        return text;
+    }
+
+    const has = (type: string): boolean =>
+        marks.some((mark) => mark.type === type);
+
+    let result = text;
+
+    if (has('code')) {
+        result = `\`${result}\``;
+    }
+
+    if (has('strong')) {
+        result = `**${result}**`;
+    }
+
+    if (has('em')) {
+        result = `*${result}*`;
+    }
+
+    if (has('strike')) {
+        result = `~~${result}~~`;
+    }
+
+    const link = marks.find((mark) => mark.type === 'link');
+
+    if (link?.attrs?.href) {
+        result = `[${result}](${link.attrs.href})`;
+    }
+
+    return result;
+}
+
+/** Las fechas viajan como milisegundos en una cadena. */
+function dateToText(timestamp: string | undefined): string {
+    const milliseconds = Number(timestamp);
+
+    if (!timestamp || Number.isNaN(milliseconds)) {
+        return '';
+    }
+
+    return new Date(milliseconds).toISOString().slice(0, 10);
+}
+
+function nodeToInline(node: AdfNode): string {
     switch (node.type) {
         case 'text':
-            return node.text ?? '';
+            return applyMarks(node.text ?? '', node.marks);
         case 'hardBreak':
             return '\n';
-        case 'rule':
-            return '---';
         case 'mention':
         case 'emoji':
+        case 'status':
             return node.attrs?.text ?? node.attrs?.shortName ?? '';
         case 'inlineCard':
-            return node.attrs?.url ?? '';
+            return node.attrs?.url ?? node.attrs?.href ?? '';
+        case 'date':
+            return dateToText(node.attrs?.timestamp);
+        default:
+            return inlineToMarkdown(node.content);
+    }
+}
+
+function inlineToMarkdown(nodes: AdfNode[] = []): string {
+    return nodes.map(nodeToInline).join('');
+}
+
+function prefixLines(text: string, prefix: string): string {
+    return text
+        .split('\n')
+        .map((line) => `${prefix}${line}`.trimEnd())
+        .join('\n');
+}
+
+function markerFor(list: AdfNode, index: number, item: AdfNode): string {
+    if (list.type === 'orderedList') {
+        return `${(list.attrs?.order ?? 1) + index}. `;
+    }
+
+    if (item.type === 'taskItem') {
+        return item.attrs?.state === 'DONE' ? '- [x] ' : '- [ ] ';
+    }
+
+    return '- ';
+}
+
+/**
+ * Cuerpo de un elemento de lista. El primer bloque va en la misma línea que el
+ * marcador y los siguientes se alinean bajo él, que es como markdown reconoce
+ * que siguen perteneciendo al mismo elemento.
+ */
+function itemToMarkdown(item: AdfNode, depth: number, offset: number): string {
+    if (item.type === 'taskItem') {
+        return inlineToMarkdown(item.content);
+    }
+
+    const parts: string[] = [];
+
+    for (const block of item.content ?? []) {
+        if (isList(block)) {
+            parts.push(`\n${listToMarkdown(block, depth + 1)}`);
+            continue;
+        }
+
+        const text = blockToMarkdown(block, depth);
+
+        parts.push(
+            parts.length === 0
+                ? text
+                : `\n${prefixLines(text, ' '.repeat(offset))}`,
+        );
+    }
+
+    return parts.join('');
+}
+
+function listToMarkdown(list: AdfNode, depth: number): string {
+    const padding = '  '.repeat(depth);
+
+    const lines = (list.content ?? []).map((item, index) => {
+        // Una lista de tareas anidada cuelga de la lista, no del elemento.
+        if (isList(item)) {
+            return listToMarkdown(item, depth + 1);
+        }
+
+        const marker = markerFor(list, index, item);
+
+        const body = itemToMarkdown(
+            item,
+            depth,
+            padding.length + marker.length,
+        );
+
+        return `${padding}${marker}${body}`;
+    });
+
+    return lines.join('\n');
+}
+
+function cellsToMarkdown(row: AdfNode): string[] {
+    return (row.content ?? []).map((cell) =>
+        blocksToMarkdown(cell.content)
+            .replace(/\|/g, '\\|')
+            .replace(/\s*\n+\s*/g, ' ')
+            .trim(),
+    );
+}
+
+function tableToMarkdown(table: AdfNode): string {
+    const rows = (table.content ?? [])
+        .filter((row) => row.type === 'tableRow')
+        .map(cellsToMarkdown);
+
+    if (rows.length === 0) {
+        return '';
+    }
+
+    const columns = Math.max(...rows.map((row) => row.length));
+
+    const line = (values: string[]): string => {
+        const padded = [
+            ...values,
+            ...Array(columns - values.length).fill(''),
+        ];
+
+        return `| ${padded.join(' | ')} |`;
+    };
+
+    const [header, ...body] = rows;
+
+    return [
+        line(header),
+        line(Array(columns).fill('---')),
+        ...body.map(line),
+    ].join('\n');
+}
+
+function blockToMarkdown(node: AdfNode, depth: number): string {
+    switch (node.type) {
+        case 'paragraph':
+            return inlineToMarkdown(node.content);
+        case 'heading': {
+            const level = Math.min(Math.max(node.attrs?.level ?? 1, 1), 6);
+
+            return `${'#'.repeat(level)} ${inlineToMarkdown(node.content)}`;
+        }
+        case 'codeBlock': {
+            const code = (node.content ?? [])
+                .map((child) => child.text ?? '')
+                .join('');
+
+            return `\`\`\`${node.attrs?.language ?? ''}\n${code}\n\`\`\``;
+        }
+        case 'rule':
+            return '---';
+        // Un panel es un aviso destacado; markdown no tiene nada más cercano
+        // que la cita, que al menos conserva que el bloque va aparte.
+        case 'blockquote':
+        case 'panel':
+            return prefixLines(blocksToMarkdown(node.content), '> ');
+        case 'table':
+            return tableToMarkdown(node);
+        case 'bulletList':
+        case 'orderedList':
+        case 'taskList':
+            return listToMarkdown(node, depth);
         default:
             break;
     }
 
-    const children = (node.content ?? []).map(nodeToText);
+    const children = node.content ?? [];
 
-    if (node.type === 'bulletList') {
-        return children.map((child) => `- ${child}`).join('\n');
-    }
+    return children.some((child) => BLOCK_TYPES.has(child.type ?? ''))
+        ? blocksToMarkdown(children)
+        : nodeToInline(node);
+}
 
-    if (node.type === 'orderedList') {
-        return children
-            .map((child, index) => `${index + 1}. ${child}`)
-            .join('\n');
-    }
-
-    return children.join(BLOCK_CONTAINERS.has(node.type ?? '') ? '\n' : '');
+function blocksToMarkdown(nodes: AdfNode[] = []): string {
+    return nodes
+        .map((node) => blockToMarkdown(node, 0))
+        .filter((block) => block.length > 0)
+        .join('\n\n');
 }
 
 /**
@@ -95,11 +311,11 @@ export function isAdfDocument(value: unknown): boolean {
 }
 
 /**
- * Convierte un documento ADF en texto legible. Acepta también un string —los
- * campos de texto plano llegan así— y valores ausentes, de modo que quien
- * llama no necesita saber de qué tipo es el campo que está leyendo.
+ * Convierte un documento ADF en markdown. Acepta también un string —los campos
+ * de texto plano llegan así— y valores ausentes, de modo que quien llama no
+ * necesita saber de qué tipo es el campo que está leyendo.
  */
-export function adfToText(value: unknown): string | null {
+export function adfToMarkdown(value: unknown): string | null {
     if (value === null || value === undefined) {
         return null;
     }
@@ -112,23 +328,9 @@ export function adfToText(value: unknown): string | null {
         return String(value);
     }
 
-    return nodeToText(value as AdfNode);
-}
+    const node = value as AdfNode;
 
-/**
- * Convierte texto plano en un documento ADF. Cada línea es un párrafo, de modo
- * que los saltos de línea del texto original se conservan al mostrarse en Jira.
- */
-export function textToAdf(text: string): AdfDocument {
-    const content: AdfParagraphNode[] = text.split('\n').map((line) =>
-        line.length > 0
-            ? { type: 'paragraph', content: [{ type: 'text', text: line }] }
-            : { type: 'paragraph' },
-    );
-
-    return {
-        type: 'doc',
-        version: 1,
-        content,
-    };
+    return node.type === 'doc'
+        ? blocksToMarkdown(node.content)
+        : blockToMarkdown(node, 0);
 }

@@ -1,6 +1,7 @@
-import { adfToText, textToAdf } from './adf.js';
+import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
+import { markdownToAdf } from './markdown.js';
 
 import type {
     JiraWorklogEntry,
@@ -79,7 +80,7 @@ export async function addWorklog(
                 // decidir cuántas horas son un día.
                 timeSpent: input.timeSpent,
                 ...(input.comment !== undefined && {
-                    comment: textToAdf(input.comment),
+                    comment: markdownToAdf(input.comment),
                 }),
                 ...(input.started !== undefined && {
                     started: toJiraTimestamp(input.started),
@@ -132,7 +133,7 @@ export async function getWorklog(issueKey: string): Promise<JiraWorklogList> {
             timeSpent: entry.timeSpent,
             timeSpentSeconds: entry.timeSpentSeconds,
             started: entry.started.slice(0, 10),
-            comment: adfToText(entry.comment),
+            comment: adfToMarkdown(entry.comment),
         }));
 
         const timetracking = issue.data.fields.timetracking;

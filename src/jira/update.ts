@@ -1,7 +1,7 @@
-import { textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { buildCustomFields, findField } from './fields.js';
+import { markdownToAdf } from './markdown.js';
 import { getEditableFields } from './meta.js';
 import { resolveAccountId } from './users.js';
 import { addWatchers } from './watchers.js';
@@ -48,7 +48,7 @@ function buildFields(
 
     if (input.description !== undefined) {
         assertEditable('description', '"Descripción"', spec, input.issueKey);
-        fields.description = textToAdf(input.description);
+        fields.description = markdownToAdf(input.description);
     }
 
     if (assigneeId !== undefined) {

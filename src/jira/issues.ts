@@ -1,8 +1,11 @@
-import { adfToText } from './adf.js';
+import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
-import { findField, readFieldValue } from './fields.js';
-import { getAllFields } from './meta.js';
+import {
+    extraFieldIds,
+    readExtraFields,
+    resolveExtraFields,
+} from './extra-fields.js';
 
 import type { JiraIssue } from '../types/jira.js';
 
@@ -45,33 +48,6 @@ const BASE_FIELDS = [
     'description',
 ];
 
-/**
- * Resuelve por su nombre los campos adicionales pedidos. Al leer un issue no
- * hay pantalla que acote los disponibles, así que se buscan en el catálogo
- * completo de la instancia.
- */
-async function resolveExtraFields(
-    names: string[],
-): Promise<Array<{ id: string; name: string }>> {
-    if (names.length === 0) {
-        return [];
-    }
-
-    const catalog = await getAllFields();
-
-    return names.map((name) => {
-        const field = findField(catalog, name);
-
-        if (!field) {
-            throw new Error(
-                `El campo "${name}" no existe en esta instancia de Jira.`,
-            );
-        }
-
-        return { id: field.id, name: field.name };
-    });
-}
-
 export async function getIssue(
     issueKey: string,
     extraFieldNames: string[] = [],
@@ -85,20 +61,14 @@ export async function getIssue(
             `/rest/api/3/issue/${issueKey}`,
             {
                 params: {
-                    fields: [...BASE_FIELDS, ...extra.map((f) => f.id)].join(
-                        ',',
-                    ),
+                    fields: [...BASE_FIELDS, ...extraFieldIds(extra)].join(','),
                 },
             },
         );
 
         const fields = response.data.fields;
 
-        const custom: Record<string, unknown> = {};
-
-        for (const field of extra) {
-            custom[field.name] = readFieldValue(fields[field.id]);
-        }
+        const custom = readExtraFields(extra, response.data.key, fields);
 
         return {
             key: response.data.key,
@@ -119,7 +89,7 @@ export async function getIssue(
             updated: fields.updated.slice(0, 10),
             originalEstimate: fields.timetracking?.originalEstimate ?? null,
             timeSpent: fields.timetracking?.timeSpent ?? null,
-            description: adfToText(fields.description),
+            description: adfToMarkdown(fields.description),
             ...(extra.length > 0 && { customFields: custom }),
         };
     } catch (error) {

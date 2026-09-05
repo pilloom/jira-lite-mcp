@@ -8,7 +8,7 @@ export const createIssueTool = {
     name: 'jira_create_issue',
 
     description:
-        'Crea un issue en Jira. Valida los campos contra el esquema real del proyecto y del tipo de issue antes de enviarlos, de modo que un payload incorrecto falle sin consumir una clave de issue. Los campos personalizados se indican por su nombre visible o por su identificador, y la persona asignada admite correo o nombre además del accountId. Con dryRun se comprueba el resultado sin crear nada. Conviene consultar antes jira_issue_fields para conocer los campos disponibles.',
+        'Crea un issue en Jira. Valida los campos contra el esquema real del proyecto y del tipo de issue antes de enviarlos, de modo que un payload incorrecto falle sin consumir una clave de issue. Los campos personalizados se indican por su nombre visible o por su identificador, y la persona asignada admite correo o nombre además del accountId. Con dryRun se comprueba el resultado sin crear nada. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código y enlaces. Conviene consultar antes jira_issue_fields para conocer los campos disponibles.',
 
     inputSchema: z.object({
         project: z
@@ -21,7 +21,9 @@ export const createIssueTool = {
         description: z
             .string()
             .optional()
-            .describe('Descripción en texto plano'),
+            .describe(
+                'Descripción del issue, en markdown. Ejemplo: - [ ] Primer criterio',
+            ),
         parent: z
             .string()
             .optional()
@@ -61,7 +63,7 @@ export const createIssueTool = {
             .record(z.string(), z.unknown())
             .optional()
             .describe(
-                'Campos personalizados por nombre o identificador. Ejemplo: { "Criterios de aceptación": "[ ] Primero" }',
+                'Campos personalizados por nombre o identificador. Los de texto rico admiten markdown. Ejemplo: { "Criterios de aceptación": "- [ ] Primero\\n- [ ] Segundo" }',
             ),
     }),
 
