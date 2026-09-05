@@ -1,6 +1,6 @@
-import { textToAdf } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
+import { markdownToAdf } from './markdown.js';
 
 import type { JiraCommentResult } from '../types/jira.js';
 
@@ -18,7 +18,7 @@ export async function addComment(
 
         const response = await client.post<JiraApiCommentResponse>(
             `/rest/api/3/issue/${issueKey}/comment`,
-            { body: textToAdf(body) },
+            { body: markdownToAdf(body) },
         );
 
         return {

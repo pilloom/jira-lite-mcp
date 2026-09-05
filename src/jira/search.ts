@@ -1,4 +1,4 @@
-import { adfToText } from './adf.js';
+import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { normalizeName } from './names.js';
@@ -183,7 +183,7 @@ export async function searchIssues(
         summary: issue.fields.summary,
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName ?? null,
-        description: adfToText(issue.fields.description),
+        description: adfToMarkdown(issue.fields.description),
     }));
 
     const warning =

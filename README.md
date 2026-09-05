@@ -9,6 +9,9 @@ respuestas legibles para un modelo en lugar de las respuestas crudas de la API.
 contra la instancia a la que se conecta. Los nombres de campo se indican como se ven
 (`"Criterios de aceptación"`) y el servidor los traduce a su identificador real.
 
+Lo que cambia en cada versión está en [`CHANGELOG.md`](CHANGELOG.md), con lo que conviene
+revisar en las guías de cada equipo.
+
 ---
 
 ## Requisitos
@@ -56,7 +59,7 @@ claude mcp get jira-lite
 > La herramienta `ping` indica qué código está en ejecución:
 >
 > ```json
-> { "status": "ok", "version": "1.1.0", "built": "2026-07-20T02:16:44.020Z" }
+> { "status": "ok", "version": "1.2.0", "built": "2026-07-20T02:16:44.020Z" }
 > ```
 >
 > Si `built` es anterior a la última compilación, la sesión está sirviendo código antiguo.
@@ -150,8 +153,32 @@ proyecto, luego usuario— y se usa la definición completa del que gane, sin co
 formato correctos contra la instancia:
 
 ```json
-{ "customFields": { "Criterios de aceptación": "[ ] Primero\n[ ] Segundo" } }
+{ "customFields": { "Criterios de aceptación": "- [ ] Primero\n- [ ] Segundo" } }
 ```
+
+**Un nombre repetido se rechaza en vez de devolver vacío.** Una instancia puede tener varios
+campos con el mismo nombre visible, uno por proyecto. Al leer un issue se piden todos los
+candidatos y se usa el que aplica a ese proyecto, que es lo normal; si aplica más de uno, el
+error enumera sus identificadores para elegir. Antes se resolvía al primero, que en otro
+proyecto no tiene valor: el issue se leía como si el campo estuviera vacío.
+
+**El catálogo de campos se refresca solo.** Se cachea al primer uso, pero un identificador
+desconocido lo hace pedirse de nuevo antes de darlo por inexistente. Así un campo creado en
+Jira con la sesión ya abierta se puede leer sin reiniciarla.
+
+**Los campos de texto rico son markdown, en las dos direcciones.** Descripciones, comentarios
+y campos `textarea` se leen como markdown en lugar de aplanados a texto corrido, y lo que se
+escribe se traduce al formato de la API. Cubre listas de tareas —las casillas marcables del
+editor—, listas con viñetas y numeradas anidadas, encabezados, citas, bloques de código,
+reglas y, en línea, negrita, cursiva, tachado, código y enlaces.
+
+```json
+{ "customFields": { "Criterios de aceptación": "- [ ] Sin marcar\n- [x] Hecho" } }
+```
+
+Al leer, ese mismo campo vuelve con su estructura y con el estado de cada casilla, así que una
+lista de criterios se distingue de un párrafo suelto. Una línea suelta sigue siendo un párrafo:
+los saltos con los que se escribió el texto se conservan tal como se ven en Jira.
 
 **Se valida antes de escribir.** Al crear un issue se comprueban los campos contra el esquema
 real del proyecto y del tipo. Un payload incorrecto falla en local, sin llegar a la API: Jira

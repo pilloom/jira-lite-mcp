@@ -8,7 +8,7 @@ export const updateIssueTool = {
     name: 'jira_update_issue',
 
     description:
-        'Actualiza los campos de un issue de Jira. Solo se envían los campos indicados; el resto queda intacto. Valida contra los campos que el issue admite editar, de modo que un campo no editable produce un error en lugar de descartarse en silencio. Los campos personalizados se indican por su nombre visible o por su identificador.',
+        'Actualiza los campos de un issue de Jira. Solo se envían los campos indicados; el resto queda intacto. Valida contra los campos que el issue admite editar, de modo que un campo no editable produce un error en lugar de descartarse en silencio. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código y enlaces. Los campos personalizados se indican por su nombre visible o por su identificador.',
 
     inputSchema: z.object({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
@@ -16,7 +16,9 @@ export const updateIssueTool = {
         description: z
             .string()
             .optional()
-            .describe('Nueva descripción en texto plano'),
+            .describe(
+                'Nueva descripción del issue, en markdown. Ejemplo: - [ ] Primer criterio',
+            ),
         assignee: z
             .string()
             .optional()
@@ -47,7 +49,7 @@ export const updateIssueTool = {
             .record(z.string(), z.unknown())
             .optional()
             .describe(
-                'Campos personalizados por nombre o identificador. Ejemplo: { "Criterios de aceptación": "[ ] Primero" }',
+                'Campos personalizados por nombre o identificador. Los de texto rico admiten markdown. Ejemplo: { "Criterios de aceptación": "- [ ] Primero\\n- [x] Segundo" }',
             ),
     }),
 
