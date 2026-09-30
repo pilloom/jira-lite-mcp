@@ -10,8 +10,8 @@ import type { AdfDocument, AdfMark, AdfNode } from './adf.js';
  *
  * Cubre lo que aparece en un ticket escrito a mano: listas de tareas, listas
  * con viñetas y numeradas —anidadas por indentación—, encabezados, citas,
- * bloques de código, reglas, y en línea negrita, cursiva, tachado, código y
- * enlaces. La dirección contraria vive en `adf.ts`.
+ * bloques de código, reglas, tablas, y en línea negrita, cursiva, tachado,
+ * código y enlaces. La dirección contraria vive en `adf.ts`.
  */
 
 type ListType = 'bulletList' | 'orderedList' | 'taskList';
@@ -30,6 +30,8 @@ const RULE = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/;
 const QUOTE = /^ {0,3}>[ \t]?(.*)$/;
 const ITEM = /^([ \t]*)(?:([-*+])|(\d+)[.)])[ \t]+(.*)$/;
 const TASK = /^\[([ xX])\][ \t]+(.*)$/;
+/** Fila de guiones que separa la cabecera del cuerpo: `| --- | :-: |`. */
+const TABLE_DELIMITER = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/;
 
 /**
  * Fragmentos con formato. Se prueban en este orden, de modo que `**` gana a
@@ -197,6 +199,58 @@ function buildLists(items: MarkdownItem[]): AdfNode[] {
     return roots;
 }
 
+/**
+ * Separa una fila de tabla en celdas. Los bordes `|` de los extremos son
+ * opcionales y un `\|` es una barra literal dentro de la celda.
+ */
+function splitRow(line: string): string[] {
+    let row = line.trim();
+
+    if (row.startsWith('|')) {
+        row = row.slice(1);
+    }
+
+    if (row.endsWith('|') && !row.endsWith('\\|')) {
+        row = row.slice(0, -1);
+    }
+
+    return row
+        .split(/(?<!\\)\|/)
+        .map((cell) => cell.replace(/\\\|/g, '|').trim());
+}
+
+/**
+ * Una tabla empieza por una fila con barras seguida de la fila de guiones,
+ * con el mismo número de columnas. Sin esa segunda línea no es tabla: una
+ * barra suelta en un párrafo se queda como texto.
+ */
+function isTableStart(lines: string[], index: number): boolean {
+    const header = lines[index];
+    const delimiter = lines[index + 1];
+
+    return (
+        header.includes('|') &&
+        delimiter !== undefined &&
+        TABLE_DELIMITER.test(delimiter) &&
+        splitRow(header).length === splitRow(delimiter).length
+    );
+}
+
+function tableRow(cells: string[], columns: number, header: boolean): AdfNode {
+    // El número de columnas lo fija la cabecera: a una fila corta se le
+    // añaden celdas vacías y lo que sobra de una larga se descarta.
+    const padded = Array.from({ length: columns }, (_, at) => cells[at] ?? '');
+
+    return {
+        type: 'tableRow',
+        content: padded.map((cell) => ({
+            type: header ? 'tableHeader' : 'tableCell',
+            attrs: {},
+            content: [paragraph(cell)],
+        })),
+    };
+}
+
 function toItem(match: RegExpExecArray): MarkdownItem {
     const [, indent, bullet, , rest] = match;
 
@@ -322,6 +376,34 @@ function parseBlocks(lines: string[]): AdfNode[] {
             }
 
             nodes.push(...buildLists(items));
+            continue;
+        }
+
+        if (isTableStart(lines, index)) {
+            const header = splitRow(line);
+            const rows = [tableRow(header, header.length, true)];
+
+            index += 2;
+
+            while (
+                index < lines.length &&
+                lines[index].trim().length > 0 &&
+                lines[index].includes('|')
+            ) {
+                rows.push(tableRow(splitRow(lines[index]), header.length, false));
+                index += 1;
+            }
+
+            nodes.push({
+                type: 'table',
+                attrs: {
+                    isNumberColumnEnabled: false,
+                    layout: 'default',
+                    localId: randomUUID(),
+                },
+                content: rows,
+            });
+
             continue;
         }
 

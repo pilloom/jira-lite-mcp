@@ -9,6 +9,31 @@ dura. `ping` devuelve la versión y la fecha del código en ejecución.
 
 ---
 
+## 1.3.0 — 2026-09-30
+
+### Las tablas en markdown se escriben como tablas
+
+Una tabla con la sintaxis de GitHub —fila de cabecera, fila de guiones y filas de
+cuerpo— se envía como tabla de Jira, con la primera fila como cabecera y el formato
+en línea aplicado dentro de cada celda.
+
+```markdown
+| Campo | Valor |
+| --- | --- |
+| **Estado** | `OK` |
+```
+
+Antes cada fila se guardaba como un párrafo suelto, incluida la de guiones, que se
+veía tal cual en pantalla. Y engañaba: la negrita y el código de las celdas sí se
+aplicaban, así que un `dryRun` parecía correcto a primera vista.
+
+La fila de guiones es obligatoria y debe tener tantas columnas como la cabecera; sin
+ella, una línea con barras sigue siendo un párrafo. Un `\|` es una barra literal
+dentro de una celda. La alineación de columnas (`:---:`) se acepta pero no se
+traslada: Jira no la admite por columna.
+
+---
+
 ## 1.2.0 — 2026-09-04
 
 Tres correcciones sobre los campos de texto rico y la resolución de campos por
@@ -33,7 +58,7 @@ creado desde el servidor nunca tenía casillas marcables sin pasar por la interf
 
 Una línea suelta sigue siendo un párrafo: los saltos con los que se escribió el
 texto se conservan tal como se ven en Jira. No se interpretan tablas escritas en
-markdown; las que ya existen en Jira sí se leen como tabla.
+markdown —desde la 1.3.0 sí—; las que ya existen en Jira sí se leen como tabla.
 
 ### Un nombre de campo repetido ya no se lee como vacío
 
