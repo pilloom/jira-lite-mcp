@@ -170,7 +170,7 @@ Jira con la sesión ya abierta se puede leer sin reiniciarla.
 y campos `textarea` se leen como markdown en lugar de aplanados a texto corrido, y lo que se
 escribe se traduce al formato de la API. Cubre listas de tareas —las casillas marcables del
 editor—, listas con viñetas y numeradas anidadas, encabezados, citas, bloques de código,
-reglas y, en línea, negrita, cursiva, tachado, código y enlaces.
+reglas, tablas con la sintaxis de GitHub y, en línea, negrita, cursiva, tachado, código y enlaces.
 
 ```json
 { "customFields": { "Criterios de aceptación": "- [ ] Sin marcar\n- [x] Hecho" } }

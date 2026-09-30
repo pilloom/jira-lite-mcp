@@ -30,6 +30,8 @@ export interface AdfNode {
         state?: string;
         localId?: string;
         timestamp?: string;
+        isNumberColumnEnabled?: boolean;
+        layout?: string;
         order?: number;
     };
 }
