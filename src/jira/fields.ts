@@ -13,6 +13,15 @@ import type { JiraFieldSpec } from '../types/jira.js';
  * sería indistinguible de un campo sin rellenar, que es la peor respuesta
  * posible porque nadie sospecha de ella.
  */
+/** Forma mínima de un issue referenciado dentro del valor de un campo. */
+function isIssueFields(value: unknown): value is { summary: string } {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { summary?: unknown }).summary === 'string'
+    );
+}
+
 export function readFieldValue(value: unknown): unknown {
     if (value === null || value === undefined) {
         return null;
@@ -31,6 +40,14 @@ export function readFieldValue(value: unknown): unknown {
     }
 
     const object = value as Record<string, unknown>;
+
+    // Un issue referenciado —el padre, una subtarea— llega con el documento
+    // entero anidado: estado, prioridad, tipo, con sus `self` y sus `iconUrl`.
+    // Se reduce a lo que lo identifica, que es lo mismo que devuelven los
+    // campos nativos del contrato.
+    if (typeof object.key === 'string' && isIssueFields(object.fields)) {
+        return { key: object.key, summary: object.fields.summary };
+    }
 
     // Los objetos de Jira nombran su etiqueta visible de tres formas distintas
     // según el tipo de campo. El identificador se conserva cuando existe:

@@ -252,6 +252,11 @@ viven en su campo se lee, sin `fields`, como un ticket sin criterios. Para modif
 hay que reescribirlo entero, así que leerlo antes —con `fields`— es lo que evita borrar lo que
 hubiera puesto a mano.
 
+Cada campo se devuelve bajo **la clave que se pidió**: por identificador, el identificador;
+por nombre, tal como se escribió. No bajo el nombre canónico del campo, que en un sitio
+traducido depende del idioma. Un issue referenciado —`parent`— se devuelve como `{key, summary}`,
+no con el documento entero anidado.
+
 El nombre no identifica: una instancia puede tener varios campos llamados igual, uno por
 proyecto. Cuando el nombre es ambiguo se puede pasar el identificador (`["customfield_10064"]`),
 que sí es único. En `jira_get_issue` y `jira_explain_issue` un nombre que no se resuelve es un

@@ -10,6 +10,42 @@ compilado, o si quedó por detrás.
 
 ---
 
+## 1.5.0 — 2026-10-09
+
+Dos correcciones sobre los campos que se piden por `fields`, salidas de usarlo
+en una instancia en español el día que se publicó.
+
+### La clave de la respuesta es el nombre que se pidió
+
+Era el nombre canónico del campo en la instancia, que en un sitio en español
+está traducido. Así que pedir `["priority", "labels", "updated", "parent"]`
+devolvía `Prioridad`, `Etiquetas`, `Actualizada` y `Principal`, y quien leyera
+`customFields.priority` encontraba `undefined` —indistinguible de un campo
+vacío, que es el fallo que el resto de esta versión existe para no cometer—.
+
+```json
+{ "fields": ["priority"] }   →   { "customFields": { "priority": … } }
+```
+
+Pedir por identificador devuelve el identificador como clave, y pedir por
+nombre lo devuelve tal como se escribió, acentos y mayúsculas incluidos. La
+clave ya no depende del idioma del sitio.
+
+### Un issue referenciado se devuelve como lo que lo identifica
+
+`fields: ["parent"]` devolvía la épica entera anidada: estado, prioridad, tipo,
+cada uno con su `self` y su `iconUrl`. Venía del criterio de no descartar lo que
+no se sabe formatear, pero un issue sí se sabe: es lo que los campos nativos del
+contrato ya devuelven.
+
+```json
+{ "customFields": { "parent": { "key": "LAN-2739", "summary": "…" } } }
+```
+
+Aplica igual a cualquier campo que contenga issues, y a las listas de ellos.
+
+---
+
 ## 1.4.0 — 2026-10-09
 
 Las tres lecturas piden los campos personalizados con el mismo parámetro, y la
@@ -54,7 +90,7 @@ llamada con el nombre mal escrito, o con un parámetro que la herramienta no tie
 respondía correctamente y sin lo pedido: el peor fallo posible, porque la
 respuesta es válida y nadie sospecha de ella.
 
-Las diecinueve herramientas rechazan ahora lo que no declaran, con un error que
+Las dieciocho herramientas rechazan ahora lo que no declaran, con un error que
 nombra la clave:
 
 ```
