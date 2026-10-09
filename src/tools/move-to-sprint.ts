@@ -8,7 +8,7 @@ export const moveToSprintTool = {
     description:
         'Mueve issues a un sprint. El sprint se indica por su identificador o por su nombre; por nombre hace falta también el proyecto, porque el nombre solo es único dentro de su tablero. Un issue pertenece a un solo sprint, así que moverlo lo saca del anterior. La respuesta dice qué issues se movieron realmente: la API los envía en lotes de 50 y uno puede fallar sin afectar al resto.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         sprint: z
             .string()
             .describe(

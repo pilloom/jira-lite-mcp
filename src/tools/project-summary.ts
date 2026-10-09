@@ -10,7 +10,7 @@ export const projectSummaryTool = {
     description:
         'Resume el estado de un proyecto de Jira a partir de sus issues abiertos: cuántos hay, cómo se reparten por estado, tipo y prioridad, cuántos están sin asignar y cuántos llevan tiempo sin actualizarse. Devuelve datos agregados, no una valoración.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         project: z
             .string()
             .describe('Clave del proyecto de Jira. Ejemplo: ATY'),

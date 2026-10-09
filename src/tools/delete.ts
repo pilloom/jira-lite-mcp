@@ -10,7 +10,7 @@ export const deleteTool = {
     description:
         'Elimina de forma permanente un comentario, un registro de tiempo o un enlace entre issues. Los identificadores se obtienen de jira_explain_issue (comentarios y enlaces) o de jira_get_worklog. No permite eliminar issues: para retirar uno de la circulación, moverlo a un estado final con jira_transition_issue.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         type: z
             .enum(['comment', 'worklog', 'link'])
             .describe('Qué se elimina: comentario, registro de tiempo o enlace'),

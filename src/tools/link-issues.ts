@@ -8,7 +8,7 @@ export const linkIssuesTool = {
     description:
         'Enlaza dos issues de Jira. La relación se indica tal como se enuncia, desde el primer issue hacia el segundo: "blocks", "is blocked by", "relates to", "duplicates". Se resuelve contra los tipos de enlace de la instancia y, si no existe, la respuesta enumera las relaciones posibles.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         issueKey: z
             .string()
             .describe('Clave del issue de origen. Ejemplo: ATY-123'),

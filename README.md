@@ -130,6 +130,9 @@ proyecto, luego usuario— y se usa la definición completa del que gane, sin co
 | `jira_issue_fields` | Tipos de issue de un proyecto y campos que admite cada uno al crearlo |
 | `jira_get_worklog` | Tiempo registrado en un issue: estimación, total y desglose |
 
+`jira_explain_issue`, `jira_get_issue` y `jira_search` aceptan `fields`: los campos
+personalizados a incluir, por su nombre visible o su identificador.
+
 ### Escritura
 
 | Herramienta | Para qué |
@@ -234,6 +237,26 @@ local la desplazaría al día anterior para quien esté al oeste del meridiano.
 sirve igual para poblar un sprint nuevo que para reubicar trabajo. La API mueve como mucho 50
 issues por petición y aplica cada una entera o ninguna: con más de 50 la respuesta indica
 cuáles se movieron y qué lote falló, en lugar de dar por hecho que se movió todo.
+
+**Los campos personalizados hay que pedirlos.** `jira_get_issue`, `jira_explain_issue` y
+`jira_search` devuelven un juego fijo de campos; cualquier otro solo viene si se nombra en
+`fields`, porque una instancia con decenas de campos por proyecto haría ilegible cada lectura.
+
+```json
+{ "issueKey": "LAN-2766", "fields": ["Criterios de aceptación"] }
+```
+
+Esto importa más de lo que parece: **la ausencia del campo en la respuesta no significa que el
+issue no lo tenga**, y los dos casos se leen igual. Un ticket cuyos criterios de aceptación
+viven en su campo se lee, sin `fields`, como un ticket sin criterios. Para modificar un campo
+hay que reescribirlo entero, así que leerlo antes —con `fields`— es lo que evita borrar lo que
+hubiera puesto a mano.
+
+El nombre no identifica: una instancia puede tener varios campos llamados igual, uno por
+proyecto. Cuando el nombre es ambiguo se puede pasar el identificador (`["customfield_10064"]`),
+que sí es único. En `jira_get_issue` y `jira_explain_issue` un nombre que no se resuelve es un
+error; en `jira_search` se informa en `warning` y el resto de resultados se devuelve igual,
+porque un issue de otro proyecto no debe tumbar la página entera.
 
 **Las búsquedas no devuelven el total de coincidencias.** El endpoint de Jira pagina y no
 informa del total, así que `jira_search` devuelve cuántos issues trae (`count`) y si quedan más

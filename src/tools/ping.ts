@@ -6,9 +6,9 @@ export const pingTool = {
     name: 'ping',
 
     description:
-        'Comprueba que el servidor Jira Lite MCP responde e indica qué código está ejecutando: versión declarada y fecha de compilación. Útil para distinguir una capacidad que no existe de una que existe pero no está desplegada en la sesión en curso.',
+        'Comprueba que el servidor Jira Lite MCP responde e indica qué código está ejecutando **este proceso**: versión y fecha del código cargado, hora de arranque, y si hay código compilado más reciente que no ha cargado (campo "stale"), que es el caso en el que las herramientas responden con el código anterior. El campo "note" dice siempre el resultado de esa comprobación. Útil para distinguir una capacidad que no existe de una que existe pero no está desplegada en la sesión en curso.',
 
-    inputSchema: z.object({}),
+    inputSchema: z.strictObject({}),
 
     async handler() {
         const version = getServerVersion();
@@ -18,11 +18,7 @@ export const pingTool = {
                 {
                     type: 'text' as const,
                     text: JSON.stringify(
-                        {
-                            status: 'ok',
-                            ...version,
-                            note: 'El cliente MCP arranca el servidor al abrir la sesión: si "built" es anterior a la última compilación, hay que reiniciar la sesión para cargar el código nuevo.',
-                        },
+                        { status: 'ok', ...version },
                         null,
                         2,
                     ),

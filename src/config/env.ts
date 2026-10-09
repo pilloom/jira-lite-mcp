@@ -30,7 +30,10 @@ for (const name of VARIABLES) {
 // entorno tienen prioridad: permiten configurarlo desde el cliente MCP.
 const moduleDirectory = dirname(fileURLToPath(import.meta.url));
 
-config({ path: resolve(moduleDirectory, '../../.env') });
+// `quiet` porque dotenv escribe su aviso en la salida estándar, que en un
+// servidor MCP es el canal del protocolo: una línea que no sea JSON-RPC la
+// tiene que descartar el cliente, y uno estricto se rompe.
+config({ path: resolve(moduleDirectory, '../../.env'), quiet: true });
 
 function getEnv(name: string): string | undefined {
     return process.env[name];

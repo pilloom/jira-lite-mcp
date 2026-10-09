@@ -5,7 +5,105 @@ se reconstruyen del historial: hasta entonces no había este fichero.
 
 Tras actualizar hay que ejecutar `npm run build` **y reiniciar la sesión de Claude
 Code**: el cliente arranca el servidor al abrirla y mantiene ese proceso mientras
-dura. `ping` devuelve la versión y la fecha del código en ejecución.
+dura. `ping` dice si el proceso que atiende la sesión ha cargado el código que hay
+compilado, o si quedó por detrás.
+
+---
+
+## 1.4.0 — 2026-10-09
+
+Las tres lecturas piden los campos personalizados con el mismo parámetro, y la
+búsqueda deja de descartar en silencio el que se le pasaba.
+
+### `jira_search` acepta `fields`
+
+Admitía el parámetro sin declararlo, así que el validador lo descartaba y la
+búsqueda respondía sin error y sin el campo pedido. Ahora lo devuelve, en un
+`customFields` por issue, por nombre visible o por identificador:
+
+```json
+{ "jql": "project = LAN AND status != Done", "fields": ["Criterios de aceptación"] }
+```
+
+Un campo que no se puede resolver en un issue concreto **no interrumpe la
+búsqueda**: se informa en `warning`, agrupado por campo y nombrando los issues
+afectados, y el resto de resultados se devuelve igual. En una búsqueda que
+cruza varios proyectos, un issue de un proyecto sin ese campo es lo normal, y
+tumbar la página entera por él sería peor que informar.
+
+### El parámetro se llama `fields` en las tres
+
+`jira_explain_issue` lo llamaba `extraFields` y `jira_get_issue` `fields`, para
+lo mismo. El nombre vigente es `fields`. `extraFields` se sigue aceptando y
+funcionando, pero la respuesta trae un `warning` que avisa del cambio: hacerlo
+fallar rompería llamadas que hoy funcionan, y aceptarlo en silencio dejaría la
+incoherencia para siempre. Si llegan los dos, se usa `fields` y se dice.
+
+### El servidor deja de escribir en el canal del protocolo
+
+`dotenv` anunciaba en la salida estándar las variables que cargaba. En un
+servidor MCP esa salida es el canal JSON-RPC, así que el cliente tiene que
+descartar esa línea para seguir hablando; uno estricto se rompe. Descubierto al
+probar los cambios de esta versión con un cliente propio, que se rompió ahí.
+
+### Un parámetro que no existe da error en vez de descartarse
+
+Las herramientas declaraban sus argumentos sin cerrar el objeto, así que el
+validador **eliminaba en silencio** cualquier clave que no reconociera. Una
+llamada con el nombre mal escrito, o con un parámetro que la herramienta no tiene,
+respondía correctamente y sin lo pedido: el peor fallo posible, porque la
+respuesta es válida y nadie sospecha de ella.
+
+Las diecinueve herramientas rechazan ahora lo que no declaran, con un error que
+nombra la clave:
+
+```
+MCP error -32602: Invalid arguments for tool jira_search: Unrecognized key: "fiedls"
+```
+
+El esquema que reciben los clientes lo dice también (`additionalProperties: false`),
+de modo que la restricción es visible antes de llamar.
+
+### `ping` dice qué código está corriendo, no qué código hay en disco
+
+Leía la versión del `package.json` y la fecha del fichero compilado **en el momento
+de preguntarlo**, las dos del disco. Así que respondía con la versión recién
+compilada mientras el proceso seguía atendiendo con la anterior: decía que un
+arreglo estaba puesto justo cuando no lo estaba, que es el único momento en que se
+pregunta.
+
+Su propia nota pedía comparar `built` con la última compilación para detectarlo,
+pero `built` **era** la fecha de la última compilación, así que la comprobación no
+podía fallar nunca.
+
+Ahora la versión y la fecha son las del código que este proceso cargó, se informa
+de la hora de arranque, y el disco se consulta solo para avisar de que ha quedado
+por detrás:
+
+```json
+{
+  "version": "1.3.0",
+  "built": "2026-09-30T14:25:43.729Z",
+  "started": "2026-10-09T09:12:00.000Z",
+  "note": "Hay código compilado después del que cargó este proceso…",
+  "stale": { "version": "1.4.0", "built": "2026-10-09T17:54:46.763Z" }
+}
+```
+
+Se detecta también **recompilar sin subir la versión**, que antes era invisible por
+partida doble: los dos números coincidían y la fecha venía del disco. El campo
+`note` dice siempre el resultado de la comprobación —al día, por detrás, o no
+comprobable—, porque un campo ausente se podía leer como cualquiera de los tres.
+
+### Queda dicho que los campos personalizados hay que pedirlos
+
+Las descripciones de las tres herramientas y el README dicen ahora lo que antes
+había que deducir: sin `fields` los campos personalizados no vienen, y **su
+ausencia en la respuesta no significa que el issue no los tenga**. Los dos casos
+se leían igual, y de ahí sale el daño real: un ticket cuyos criterios de
+aceptación viven en su campo se lee, sin `fields`, como un ticket sin criterios
+—con el riesgo de escribir unos nuevos en la descripción, o de reescribir el
+campo pisando las casillas que alguien hubiera marcado a mano—.
 
 ---
 
