@@ -39,6 +39,13 @@ funcionando, pero la respuesta trae un `warning` que avisa del cambio: hacerlo
 fallar rompería llamadas que hoy funcionan, y aceptarlo en silencio dejaría la
 incoherencia para siempre. Si llegan los dos, se usa `fields` y se dice.
 
+### El servidor deja de escribir en el canal del protocolo
+
+`dotenv` anunciaba en la salida estándar las variables que cargaba. En un
+servidor MCP esa salida es el canal JSON-RPC, así que el cliente tiene que
+descartar esa línea para seguir hablando; uno estricto se rompe. Descubierto al
+probar los cambios de esta versión con un cliente propio, que se rompió ahí.
+
 ### Un parámetro que no existe da error en vez de descartarse
 
 Las herramientas declaraban sus argumentos sin cerrar el objeto, así que el
