@@ -23,6 +23,8 @@ export interface JiraIssueSummary {
     status: string;
     assignee: string | null;
     description: string | null;
+    /** Solo los campos adicionales que se pidieron por su nombre. */
+    customFields?: Record<string, unknown>;
 }
 
 export interface JiraSearchResult {
@@ -30,7 +32,11 @@ export interface JiraSearchResult {
     count: number;
     /** Hay más resultados de los que caben en el límite pedido. */
     hasMore: boolean;
-    /** Motivo probable de un resultado vacío, cuando se detecta uno. */
+    /**
+     * Lo que haga falta saber para no malinterpretar los issues devueltos: el
+     * motivo probable de un resultado vacío, o los campos adicionales que no
+     * se pudieron leer en algún issue.
+     */
     warning?: string;
     issues: JiraIssueSummary[];
 }

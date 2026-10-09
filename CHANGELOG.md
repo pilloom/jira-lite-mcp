@@ -9,6 +9,47 @@ dura. `ping` devuelve la versión y la fecha del código en ejecución.
 
 ---
 
+## 1.4.0 — 2026-10-09
+
+Las tres lecturas piden los campos personalizados con el mismo parámetro, y la
+búsqueda deja de descartar en silencio el que se le pasaba.
+
+### `jira_search` acepta `fields`
+
+Admitía el parámetro sin declararlo, así que el validador lo descartaba y la
+búsqueda respondía sin error y sin el campo pedido. Ahora lo devuelve, en un
+`customFields` por issue, por nombre visible o por identificador:
+
+```json
+{ "jql": "project = LAN AND status != Done", "fields": ["Criterios de aceptación"] }
+```
+
+Un campo que no se puede resolver en un issue concreto **no interrumpe la
+búsqueda**: se informa en `warning`, agrupado por campo y nombrando los issues
+afectados, y el resto de resultados se devuelve igual. En una búsqueda que
+cruza varios proyectos, un issue de un proyecto sin ese campo es lo normal, y
+tumbar la página entera por él sería peor que informar.
+
+### El parámetro se llama `fields` en las tres
+
+`jira_explain_issue` lo llamaba `extraFields` y `jira_get_issue` `fields`, para
+lo mismo. El nombre vigente es `fields`. `extraFields` se sigue aceptando y
+funcionando, pero la respuesta trae un `warning` que avisa del cambio: hacerlo
+fallar rompería llamadas que hoy funcionan, y aceptarlo en silencio dejaría la
+incoherencia para siempre. Si llegan los dos, se usa `fields` y se dice.
+
+### Queda dicho que los campos personalizados hay que pedirlos
+
+Las descripciones de las tres herramientas y el README dicen ahora lo que antes
+había que deducir: sin `fields` los campos personalizados no vienen, y **su
+ausencia en la respuesta no significa que el issue no los tenga**. Los dos casos
+se leían igual, y de ahí sale el daño real: un ticket cuyos criterios de
+aceptación viven en su campo se lee, sin `fields`, como un ticket sin criterios
+—con el riesgo de escribir unos nuevos en la descripción, o de reescribir el
+campo pisando las casillas que alguien hubiera marcado a mano—.
+
+---
+
 ## 1.3.0 — 2026-09-30
 
 ### Las tablas en markdown se escriben como tablas

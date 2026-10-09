@@ -1,7 +1,14 @@
 import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
+import {
+    extraFieldIds,
+    readExtraFields,
+    resolveExtraFields,
+} from './extra-fields.js';
 import { normalizeName } from './names.js';
+
+import type { JiraExtraField } from './extra-fields.js';
 
 import type { JiraIssueSummary, JiraSearchResult } from '../types/jira.js';
 
@@ -30,6 +37,7 @@ interface JiraSearchFields {
     } | null;
     /** Documento ADF: la API v3 nunca devuelve texto plano aquí. */
     description: unknown;
+    [key: string]: unknown;
 }
 
 const DEFAULT_LIMIT = 20;
@@ -168,15 +176,97 @@ async function warnAboutIssueTypeName(jql: string): Promise<string | undefined> 
     }
 }
 
+/** Campo que no se pudo leer, y en qué issues de la página. */
+interface FieldProblem {
+    /** Motivo, tal como lo explica la lectura del primer issue afectado. */
+    reason: string;
+    keys: string[];
+}
+
+/**
+ * Lee los campos adicionales de un issue de la búsqueda.
+ *
+ * Se lee cada campo por separado para que un nombre que no se pueda resolver
+ * en este issue no arrastre a los demás, y el problema se acumula como aviso
+ * en lugar de interrumpir la búsqueda: tumbar una página entera de resultados
+ * porque un issue de otro proyecto no tiene ese campo sería peor que informar.
+ */
+function readSearchFields(
+    extra: JiraExtraField[],
+    issueKey: string,
+    apiFields: Record<string, unknown>,
+    problems: Map<string, FieldProblem>,
+): Record<string, unknown> {
+    const values: Record<string, unknown> = {};
+
+    for (const field of extra) {
+        try {
+            Object.assign(
+                values,
+                readExtraFields([field], issueKey, apiFields),
+            );
+        } catch (error) {
+            const reason =
+                error instanceof Error ? error.message : String(error);
+
+            const problem = problems.get(field.requested);
+
+            if (problem) {
+                problem.keys.push(issueKey);
+            } else {
+                problems.set(field.requested, { reason, keys: [issueKey] });
+            }
+        }
+    }
+
+    return values;
+}
+
+const LISTED_KEYS = 10;
+
+/**
+ * Un aviso por campo, no por issue: el mismo campo suele fallar en todos los
+ * issues de la página, y repetir el motivo en veinte líneas casi idénticas
+ * taparía los resultados que sí vienen.
+ */
+function describeProblem(
+    requested: string,
+    { reason, keys }: FieldProblem,
+): string {
+    if (keys.length === 1) {
+        return reason;
+    }
+
+    const listed = keys.slice(0, LISTED_KEYS).join(', ');
+
+    const rest =
+        keys.length > LISTED_KEYS
+            ? ` y ${keys.length - LISTED_KEYS} más`
+            : '';
+
+    return `No se pudo leer "${requested}" en ${keys.length} de los issues devueltos (${listed}${rest}). ${reason}`;
+}
+
 export async function searchIssues(
     jql: string,
     limit: number = DEFAULT_LIMIT,
+    extraFieldNames: string[] = [],
 ): Promise<JiraSearchResult> {
+    const extra = await resolveExtraFields(extraFieldNames);
+
     const page = await runJql<JiraSearchFields>(
         jql,
-        ['summary', 'status', 'assignee', 'description'],
+        [
+            'summary',
+            'status',
+            'assignee',
+            'description',
+            ...extraFieldIds(extra),
+        ],
         limit,
     );
+
+    const problems = new Map<string, FieldProblem>();
 
     const issues: JiraIssueSummary[] = page.issues.map((issue) => ({
         key: issue.key,
@@ -184,15 +274,32 @@ export async function searchIssues(
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName ?? null,
         description: adfToMarkdown(issue.fields.description),
+        ...(extra.length > 0 && {
+            customFields: readSearchFields(
+                extra,
+                issue.key,
+                issue.fields,
+                problems,
+            ),
+        }),
     }));
 
-    const warning =
+    const emptyResult =
         issues.length === 0 ? await warnAboutIssueTypeName(jql) : undefined;
+
+    const warning = [
+        emptyResult,
+        ...[...problems].map(([requested, problem]) =>
+            describeProblem(requested, problem),
+        ),
+    ]
+        .filter((message) => message !== undefined)
+        .join('\n');
 
     return {
         count: issues.length,
         hasMore: page.hasMore,
-        ...(warning !== undefined && { warning }),
+        ...(warning !== '' && { warning }),
         issues,
     };
 }
