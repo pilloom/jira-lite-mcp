@@ -10,7 +10,7 @@ export const createSprintTool = {
     description:
         'Crea un sprint en el tablero scrum de un proyecto. El tablero se resuelve a partir de la clave del proyecto; si tiene varios, la respuesta enumera sus identificadores para elegir uno con boardId. El sprint queda en estado "future": crearlo no lo arranca. Para meterle issues, jira_move_to_sprint.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         project: z
             .string()
             .optional()

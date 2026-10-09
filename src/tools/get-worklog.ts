@@ -8,7 +8,7 @@ export const getWorklogTool = {
     description:
         'Devuelve el tiempo registrado en un issue de Jira: la estimación original, el total dedicado y cada registro con su autor, duración, fecha y descripción. Incluye el identificador de cada registro, necesario para eliminarlo.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
     }),
 

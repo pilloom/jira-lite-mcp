@@ -8,7 +8,7 @@ export const transitionIssueTool = {
     description:
         'Cambia el estado de un issue de Jira. El destino se indica por el nombre del estado, por el nombre de la transición o por su id, y se resuelve contra las transiciones que el issue admite en ese momento. Si el destino no es válido, la respuesta enumera los estados posibles. Admite un comentario en la misma operación.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
         to: z
             .string()

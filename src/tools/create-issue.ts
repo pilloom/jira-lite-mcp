@@ -10,7 +10,7 @@ export const createIssueTool = {
     description:
         'Crea un issue en Jira. Valida los campos contra el esquema real del proyecto y del tipo de issue antes de enviarlos, de modo que un payload incorrecto falle sin consumir una clave de issue. Los campos personalizados se indican por su nombre visible o por su identificador, y la persona asignada admite correo o nombre además del accountId. Con dryRun se comprueba el resultado sin crear nada. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código y enlaces. Conviene consultar antes jira_issue_fields para conocer los campos disponibles.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         project: z
             .string()
             .describe('Clave del proyecto de Jira. Ejemplo: ATY'),

@@ -8,7 +8,7 @@ export const issueFieldsTool = {
     description:
         'Devuelve los tipos de issue de un proyecto de Jira y, si se indica un tipo, los campos que admite al crearlo: identificador, nombre, si es obligatorio, tipo de dato y valores permitidos. Útil para conocer los campos reales de la instancia antes de crear un issue.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         project: z
             .string()
             .describe('Clave del proyecto de Jira. Ejemplo: ATY'),

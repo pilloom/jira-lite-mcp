@@ -39,6 +39,24 @@ funcionando, pero la respuesta trae un `warning` que avisa del cambio: hacerlo
 fallar rompería llamadas que hoy funcionan, y aceptarlo en silencio dejaría la
 incoherencia para siempre. Si llegan los dos, se usa `fields` y se dice.
 
+### Un parámetro que no existe da error en vez de descartarse
+
+Las herramientas declaraban sus argumentos sin cerrar el objeto, así que el
+validador **eliminaba en silencio** cualquier clave que no reconociera. Una
+llamada con el nombre mal escrito, o con un parámetro que la herramienta no tiene,
+respondía correctamente y sin lo pedido: el peor fallo posible, porque la
+respuesta es válida y nadie sospecha de ella.
+
+Las diecinueve herramientas rechazan ahora lo que no declaran, con un error que
+nombra la clave:
+
+```
+MCP error -32602: Invalid arguments for tool jira_search: Unrecognized key: "fiedls"
+```
+
+El esquema que reciben los clientes lo dice también (`additionalProperties: false`),
+de modo que la restricción es visible antes de llamar.
+
 ### `ping` dice qué código está corriendo, no qué código hay en disco
 
 Leía la versión del `package.json` y la fecha del fichero compilado **en el momento

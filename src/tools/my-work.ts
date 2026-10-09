@@ -10,7 +10,7 @@ export const myWorkTool = {
     description:
         'Devuelve los issues asignados al usuario autenticado que siguen pendientes, ordenados por fecha de actualización. Responde a preguntas como "¿qué tengo pendiente en Jira?". Cada issue incluye clave, título, tipo, estado, prioridad y fecha de última actualización.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         project: z
             .string()
             .optional()

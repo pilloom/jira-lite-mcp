@@ -10,7 +10,7 @@ export const addWorklogTool = {
     description:
         'Registra tiempo trabajado en un issue de Jira. La respuesta incluye cómo ha interpretado Jira el tiempo enviado, en segundos, porque la duración de una jornada la define la configuración del sitio.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
         timeSpent: z
             .string()

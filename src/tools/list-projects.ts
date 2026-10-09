@@ -10,7 +10,7 @@ export const listProjectsTool = {
     description:
         'Lista los proyectos de Jira visibles para la cuenta autenticada, con su clave, nombre, tipo y responsable. Sirve para averiguar la clave de un proyecto a partir de su nombre, que es lo que necesitan el resto de herramientas.',
 
-    inputSchema: z.object({
+    inputSchema: z.strictObject({
         query: z
             .string()
             .optional()
