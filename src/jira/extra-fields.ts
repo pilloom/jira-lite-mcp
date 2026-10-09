@@ -13,10 +13,12 @@ import type { JiraFieldSpec } from '../types/jira.js';
  * cuando llegue la respuesta del issue, que ya dice cuáles le aplican.
  */
 export interface JiraExtraField {
-    /** Nombre tal como se pidió, que es como aparece en los errores. */
+    /**
+     * Nombre tal como se pidió. Es la clave con la que se devuelve el valor y
+     * la que aparece en los errores: quien pide un campo lo busca en la
+     * respuesta por el nombre que escribió, no por otro.
+     */
     requested: string;
-    /** Nombre canónico en Jira, con el que se devuelve el valor. */
-    name: string;
     candidates: JiraFieldSpec[];
 }
 
@@ -46,7 +48,7 @@ export async function resolveExtraFields(
             );
         }
 
-        return { requested: name, name: candidates[0].name, candidates };
+        return { requested: name, candidates };
     });
 }
 
@@ -105,7 +107,11 @@ export function readExtraFields(
     const values: Record<string, unknown> = {};
 
     for (const field of fields) {
-        values[field.name] = readValue(field, issueKey, apiFields);
+        // La clave es lo que se pidió, no el nombre canónico del campo en la
+        // instancia: ese está traducido en un sitio en español, así que pedir
+        // `priority` devolvía `Prioridad` y leer `customFields.priority` daba
+        // `undefined`, indistinguible de un campo vacío.
+        values[field.requested] = readValue(field, issueKey, apiFields);
     }
 
     return values;
