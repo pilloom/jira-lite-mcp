@@ -5,7 +5,8 @@ se reconstruyen del historial: hasta entonces no había este fichero.
 
 Tras actualizar hay que ejecutar `npm run build` **y reiniciar la sesión de Claude
 Code**: el cliente arranca el servidor al abrirla y mantiene ese proceso mientras
-dura. `ping` devuelve la versión y la fecha del código en ejecución.
+dura. `ping` dice si el proceso que atiende la sesión ha cargado el código que hay
+compilado, o si quedó por detrás.
 
 ---
 
@@ -37,6 +38,37 @@ lo mismo. El nombre vigente es `fields`. `extraFields` se sigue aceptando y
 funcionando, pero la respuesta trae un `warning` que avisa del cambio: hacerlo
 fallar rompería llamadas que hoy funcionan, y aceptarlo en silencio dejaría la
 incoherencia para siempre. Si llegan los dos, se usa `fields` y se dice.
+
+### `ping` dice qué código está corriendo, no qué código hay en disco
+
+Leía la versión del `package.json` y la fecha del fichero compilado **en el momento
+de preguntarlo**, las dos del disco. Así que respondía con la versión recién
+compilada mientras el proceso seguía atendiendo con la anterior: decía que un
+arreglo estaba puesto justo cuando no lo estaba, que es el único momento en que se
+pregunta.
+
+Su propia nota pedía comparar `built` con la última compilación para detectarlo,
+pero `built` **era** la fecha de la última compilación, así que la comprobación no
+podía fallar nunca.
+
+Ahora la versión y la fecha son las del código que este proceso cargó, se informa
+de la hora de arranque, y el disco se consulta solo para avisar de que ha quedado
+por detrás:
+
+```json
+{
+  "version": "1.3.0",
+  "built": "2026-09-30T14:25:43.729Z",
+  "started": "2026-10-09T09:12:00.000Z",
+  "note": "Hay código compilado después del que cargó este proceso…",
+  "stale": { "version": "1.4.0", "built": "2026-10-09T17:54:46.763Z" }
+}
+```
+
+Se detecta también **recompilar sin subir la versión**, que antes era invisible por
+partida doble: los dos números coincidían y la fecha venía del disco. El campo
+`note` dice siempre el resultado de la comprobación —al día, por detrás, o no
+comprobable—, porque un campo ausente se podía leer como cualquiera de los tres.
 
 ### Queda dicho que los campos personalizados hay que pedirlos
 
