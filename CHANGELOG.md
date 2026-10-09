@@ -5,8 +5,8 @@ se reconstruyen del historial: hasta entonces no había este fichero.
 
 Tras actualizar hay que ejecutar `npm run build` —que vacía `dist/` antes de
 compilar— **y reiniciar la sesión de Claude Code**: el cliente arranca el servidor
-al abrirla y mantiene ese proceso mientras dura. `ping` dice si el proceso que atiende la sesión ha cargado el código que hay
-compilado, o si quedó por detrás.
+al abrirla y mantiene ese proceso mientras dura. `ping` dice si el proceso que atiende la sesión ha cargado el código que
+hay compilado, o si quedó por detrás.
 
 ---
 
