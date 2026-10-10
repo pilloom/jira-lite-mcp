@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { updateIssue } from '../jira/update.js';
 
+import { strictToolSchema } from './params.js';
+
 import type { JiraUpdateIssueInput } from '../types/jira.js';
 
 export const updateIssueTool = {
@@ -10,7 +12,7 @@ export const updateIssueTool = {
     description:
         'Actualiza los campos de un issue de Jira. Solo se envían los campos indicados; el resto queda intacto. Valida contra los campos que el issue admite editar, de modo que un campo no editable produce un error en lugar de descartarse en silencio. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código y enlaces. Los campos personalizados se indican por su nombre visible o por su identificador.',
 
-    inputSchema: z.strictObject({
+    inputSchema: strictToolSchema({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
         summary: z.string().optional().describe('Nuevo título del issue'),
         description: z

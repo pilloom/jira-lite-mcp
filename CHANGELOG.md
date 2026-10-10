@@ -10,6 +10,46 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.6.0 — 2026-10-10
+
+Un parámetro mal nombrado dice cómo se llama de verdad, y el alta contrasta con
+Jira lo que pidió quien la hizo.
+
+### El error nombra el parámetro bueno
+
+`z.strictObject` ya rechazaba en la 1.5.0 un parámetro que no existe, pero el
+mensaje solo listaba las claves no reconocidas. Los nombres que llegaban venían
+de otro servidor MCP —`assigneeAccountId`, `timetracking`, `additional_fields`,
+`projectKey`—, así que ahora el error los traduce:
+
+```
+Parámetros que no existen en esta herramienta: "assigneeAccountId" (es "assignee"),
+"timetracking" (es "originalEstimate"). Los admitidos son: project, issueType, …
+```
+
+En `jira_create_issue` y en `jira_update_issue`. Se sigue rechazando la llamada:
+el payload que funciona es siempre el mismo.
+
+### El alta devuelve el asignado que quedó, no el que se pidió
+
+`timetracking` ya se releía. Ahora se relee también el asignado, en la misma
+petición, cuando la llamada lo incluía:
+
+```json
+{
+  "key": "LAN-2800",
+  "applied": ["project", "issuetype", "summary", "assignee", "timetracking"],
+  "assignee": { "accountId": "712020:f838…", "displayName": "…" },
+  "timetracking": { "originalEstimate": "1h 30m", "originalEstimateSeconds": 5400 }
+}
+```
+
+Ninguno de los dos vuelve en la respuesta de creación de Jira, y los dos pueden
+quedar distintos de lo pedido sin que nada falle. Leerlos es lo que convierte
+ese silencio en un dato comprobable.
+
+---
+
 ## 1.5.0 — 2026-10-09
 
 Dos correcciones sobre los campos que se piden por `fields`, salidas de usarlo

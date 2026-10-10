@@ -258,6 +258,11 @@ export interface JiraCreatedIssue {
     dryRun?: boolean;
     /** Payload que se enviaría; solo en una validación sin crear. */
     fields?: Record<string, unknown>;
+    /** Asignado tal como quedó, para poder contrastarlo con lo pedido. */
+    assignee?: {
+        accountId: string | null;
+        displayName: string | null;
+    };
     /** Estimación tal como quedó registrada, para poder contrastarla. */
     timetracking?: {
         originalEstimate: string | null;
