@@ -207,29 +207,57 @@ async function assertPolicyFields(
 }
 
 /**
- * Relee la estimación tal como ha quedado registrada, con su equivalencia en
- * segundos: el sufijo de días se interpreta según la jornada del sitio, así que
- * lo pedido y lo guardado no tienen por qué coincidir.
+ * Relee del issue creado lo que Jira haya hecho con el asignado y la
+ * estimación. Ninguno de los dos vuelve en la respuesta de creación, y los dos
+ * pueden no quedar como se pedían sin que nada falle: el sufijo de días se
+ * interpreta según la jornada del sitio, y una asignación que el proyecto no
+ * admite se descarta en silencio. Leerlo aquí es lo que convierte ese silencio
+ * en un dato comprobable por quien llama.
  */
-async function readTimetracking(
+async function readApplied(
     issueKey: string,
-): Promise<{ originalEstimate: string | null; originalEstimateSeconds: number | null }> {
+    wanted: { assignee: boolean; timetracking: boolean },
+): Promise<{
+    assignee?: JiraCreatedIssue['assignee'];
+    timetracking?: JiraCreatedIssue['timetracking'];
+}> {
+    if (!wanted.assignee && !wanted.timetracking) {
+        return {};
+    }
+
+    const fields = [
+        ...(wanted.assignee ? ['assignee'] : []),
+        ...(wanted.timetracking ? ['timetracking'] : []),
+    ];
+
     const client = createJiraClient();
 
     const response = await client.get<{
         fields: {
+            assignee: { accountId?: string; displayName?: string } | null;
             timetracking: {
                 originalEstimate?: string;
                 originalEstimateSeconds?: number;
             };
         };
-    }>(`/rest/api/3/issue/${issueKey}`, { params: { fields: 'timetracking' } });
+    }>(`/rest/api/3/issue/${issueKey}`, { params: { fields: fields.join(',') } });
 
-    const timetracking = response.data.fields.timetracking;
+    const read = response.data.fields;
 
     return {
-        originalEstimate: timetracking.originalEstimate ?? null,
-        originalEstimateSeconds: timetracking.originalEstimateSeconds ?? null,
+        ...(wanted.assignee && {
+            assignee: {
+                accountId: read.assignee?.accountId ?? null,
+                displayName: read.assignee?.displayName ?? null,
+            },
+        }),
+        ...(wanted.timetracking && {
+            timetracking: {
+                originalEstimate: read.timetracking?.originalEstimate ?? null,
+                originalEstimateSeconds:
+                    read.timetracking?.originalEstimateSeconds ?? null,
+            },
+        }),
     };
 }
 
@@ -287,19 +315,19 @@ export async function createIssue(
                 ? await addWatchers(key, input.watchers)
                 : undefined;
 
-        // La creación no devuelve los campos resultantes, así que la estimación
-        // se relee: es la única forma de comprobar que Jira la interpretó como
-        // se pedía, y su unidad depende de la jornada configurada en el sitio.
-        const timetracking =
-            input.originalEstimate !== undefined
-                ? await readTimetracking(key)
-                : undefined;
+        // La creación no devuelve los campos resultantes, así que lo pedido se
+        // contrasta con lo que quedó: es la única forma de distinguir un
+        // asignado o una estimación aplicados de unos descartados sin error.
+        const read = await readApplied(key, {
+            assignee: assigneeId !== undefined,
+            timetracking: input.originalEstimate !== undefined,
+        });
 
         return {
             key,
             url: `${client.defaults.baseURL}/browse/${key}`,
             applied,
-            ...(timetracking !== undefined && { timetracking }),
+            ...read,
             ...(watchers !== undefined && { watchers }),
         };
     } catch (error) {

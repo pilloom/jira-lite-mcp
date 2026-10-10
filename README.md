@@ -159,6 +159,18 @@ formato correctos contra la instancia:
 { "customFields": { "Criterios de aceptación": "- [ ] Primero\n- [ ] Segundo" } }
 ```
 
+**Un parámetro que no existe da error, y el error dice cómo se llama aquí.** Los nombres de
+otros servidores de Jira —`assigneeAccountId`, `timetracking`, `additional_fields`,
+`projectKey`— se descartaban en silencio y el issue nacía sin lo que se le había puesto. Ahora
+la llamada se rechaza antes de tocar Jira, nombrando el equivalente: la persona asignada es
+`assignee`, la estimación `originalEstimate` —una cadena suelta, no un objeto— y los campos
+personalizados `customFields`.
+
+**El alta devuelve el asignado y la estimación tal como quedaron.** Ninguno de los dos vuelve
+en la respuesta de creación de Jira, y los dos pueden quedar distintos de lo pedido sin que
+nada falle: la estimación en días se interpreta según la jornada del sitio y una asignación que
+el proyecto no admite se descarta. Se releen del issue creado para poder contrastarlos.
+
 **Un nombre repetido se rechaza en vez de devolver vacío.** Una instancia puede tener varios
 campos con el mismo nombre visible, uno por proyecto. Al leer un issue se piden todos los
 candidatos y se usa el que aplica a ese proyecto, que es lo normal; si aplica más de uno, el
