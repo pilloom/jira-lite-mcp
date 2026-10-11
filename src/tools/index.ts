@@ -6,6 +6,7 @@ import { searchTool } from './search.js';
 import { issueFieldsTool } from './issue-fields.js';
 import { createIssueTool } from './create-issue.js';
 import { transitionIssueTool } from './transition-issue.js';
+import { claimIssueTool } from './claim-issue.js';
 import { linkIssuesTool } from './link-issues.js';
 import { updateIssueTool } from './update-issue.js';
 import { myWorkTool } from './my-work.js';
@@ -74,6 +75,15 @@ export function registerTools(server: McpServer) {
             inputSchema: transitionIssueTool.inputSchema,
         },
         async (args) => transitionIssueTool.handler(args),
+    );
+
+    server.registerTool(
+        claimIssueTool.name,
+        {
+            description: claimIssueTool.description,
+            inputSchema: claimIssueTool.inputSchema,
+        },
+        async (args) => claimIssueTool.handler(args),
     );
 
     server.registerTool(
