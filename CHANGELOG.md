@@ -10,6 +10,25 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.7.1 — 2026-10-11
+
+### `jira_claim_issue` devolvía el usuario entero, con su correo
+
+La respuesta llevaba el objeto de usuario **como lo manda Jira** —`self`,
+`avatarUrls`, `timeZone`, `accountType` y el `emailAddress` de la persona— en
+lugar de los dos campos que declara: `accountId` y `displayName`.
+
+🔴 **El tipo no lo impedía porque un tipo de menos no recorta nada.** La
+respuesta de Jira se había declarado como si `assignee` trajera solo esos dos
+campos, así que devolverlo tal cual compilaba sin una queja: lo que describía
+mal era la API, no lo que salía. El recorte ahora es explícito.
+
+Salió al llamar a la herramienta ya desplegada, no al medirla antes: la prueba
+de la 1.7.0 imprimía solo `displayName`, y ese campo estaba bien en los dos
+casos.
+
+---
+
 ## 1.7.0 — 2026-10-10
 
 Una herramienta para tomar una tarea sin que dos personas se la lleven a la vez.
