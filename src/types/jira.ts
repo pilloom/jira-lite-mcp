@@ -371,3 +371,43 @@ export interface JiraSprintMoveResult {
         error: string;
     }>;
 }
+
+/** Por qué no se tomó la tarea. Ausente cuando `claimed` es `true`. */
+export type JiraClaimRefusal =
+    /** La tiene otra persona. */
+    | 'taken'
+    /** Está cerrada: `statusCategory.key` es `done`. */
+    | 'done'
+    /**
+     * Sin asignado pero ya empezada —`statusCategory.key` es `indeterminate`—,
+     * que es la huella de alguien trabajando sin haberse asignado.
+     */
+    | 'started-unassigned'
+    /** Se escribió la asignación y la relectura devolvió a otra persona. */
+    | 'lost-race';
+
+export interface JiraClaimResult {
+    key: string;
+    url: string;
+    summary: string;
+    /** Si la tarea quedó a nombre de quien llamó. */
+    claimed: boolean;
+    reason?: JiraClaimRefusal;
+    /** El motivo en prosa, para repetírselo a quien preguntó. */
+    message: string;
+    /**
+     * Quién la tiene, **leído de Jira después de escribir**. Es el dato que
+     * decide, no el que se pidió.
+     */
+    assignee: { accountId: string; displayName: string } | null;
+    status: string;
+    /** Presente si ya era de quien llama antes de la llamada. */
+    alreadyMine?: boolean;
+    /** Presente si se pidió `to` y la transición llegó a hacerse. */
+    transitioned?: { status: string; transition: string };
+    /**
+     * Presente si se pidió `to` y no se transicionó por fallar la transición,
+     * con la asignación ya escrita: son dos operaciones y una puede caer sola.
+     */
+    transitionError?: string;
+}

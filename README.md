@@ -137,6 +137,7 @@ personalizados a incluir, por su nombre visible o su identificador.
 
 | Herramienta | Para qué |
 |---|---|
+| `jira_claim_issue` | **Tomar una tarea**: comprueba que está libre, se la asigna y relee para confirmarlo |
 | `jira_create_issue` | Crear un issue, validando los campos antes de enviarlos |
 | `jira_update_issue` | Modificar campos de un issue |
 | `jira_transition_issue` | Cambiar de estado, opcionalmente con comentario |
@@ -150,6 +151,24 @@ personalizados a incluir, por su nombre visible o su identificador.
 ---
 
 ## Notas de uso
+
+**Tomar una tarea se hace con `jira_claim_issue`, no asignándose a pelo.** La herramienta lee
+el issue, se detiene si ya tiene dueño, si está cerrada o si está sin asignar pero ya empezada,
+y solo entonces escribe la asignación y **vuelve a leerla** para confirmar que quedó a tu
+nombre. Jira no ofrece escritura condicional sobre la persona asignada: si dos personas se
+asignan a la vez, la segunda escritura gana y Jira **no avisa a la primera**, de modo que las
+dos se van convencidas de tenerla y el trabajo se hace dos veces. Releyendo, quien perdió lee
+el nombre de la otra y se retira.
+
+⚠️ **No es una toma atómica.** Entre la escritura y la relectura queda una ventana en la que
+las dos pueden leerse a sí mismas; lo que se consigue es reducirla a dos peticiones en vez de
+las horas que lleva desfasada una lista generada por la mañana. Cerrarla del todo exigiría algo
+que Jira no da, así que no se promete.
+
+El estado se cambia con `to`, y **solo si se ganó la asignación**: transicionar antes dejaría
+«En curso» una tarea que acaba de ser de otra persona. Si la transición falla, la toma no se
+niega —la asignación ya está escrita y es ella la que reserva la tarea—: la respuesta lleva
+`transitionError` con el motivo y los estados posibles.
 
 **Los campos se indican por su nombre.** `jira_create_issue` y `jira_update_issue` aceptan
 `customFields` con el nombre visible del campo, y el servidor resuelve el identificador y el

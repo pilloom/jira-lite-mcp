@@ -10,6 +10,82 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.7.0 — 2026-10-10
+
+Una herramienta para tomar una tarea sin que dos personas se la lleven a la vez.
+
+### `jira_claim_issue`: comprueba, asigna y relee
+
+Dos desarrolladores tomaban la misma tarea porque cada uno decidía mirando una
+lista generada horas antes. La lista no puede ser la autoridad del momento de
+empezar; la asignación en Jira sí, pero **escribirla no basta**:
+
+> Jira no ofrece escritura condicional sobre `assignee`. Si dos personas se
+> asignan a la vez, la segunda escritura gana y Jira **no avisa a la primera**:
+> las dos se van convencidas de tenerla.
+
+Por eso la herramienta **vuelve a leer el issue después de escribir** y compara
+por `accountId`. Quien perdió lee el nombre de la otra persona y se retira:
+
+```json
+{
+  "key": "LAN-2796",
+  "claimed": false,
+  "reason": "lost-race",
+  "message": "La asignación de LAN-2796 se escribió, pero al releerla la tiene Ariel Rodriguez: se os cruzó la toma y la perdiste. No empieces.",
+  "assignee": { "accountId": "712020:…", "displayName": "Ariel Rodriguez" }
+}
+```
+
+Esa relectura es la razón de que sea una herramienta y no tres llamadas
+seguidas: una garantía se cumple en el servidor, no se le vuelve a pedir a quien
+llama en cada ocasión.
+
+Antes de escribir se detiene, sin tocar nada, en tres casos: la tiene otra
+persona (`taken`), está cerrada (`done`) o está **sin asignar pero ya empezada**
+(`started-unassigned`), que es la huella de alguien trabajando sin haberse
+asignado. Si ya era de quien llama, lo dice y no reasigna nada: repetir la
+llamada no tiene consecuencias.
+
+🔴 **Se decide por `statusCategory.key`, no por el nombre del estado.** El nombre
+lo pone cada workflow y va en el idioma del sitio: comparar contra «En curso»
+daría por no empezado cualquier estado renombrado o nuevo —en LAN, «En curso» y
+«EN REVISION» son los dos `indeterminate`— y dar por libre lo que ya tiene a
+alguien dentro es justo el fallo que esto evita.
+
+### Lo que no promete
+
+⚠️ **No es una toma atómica.** Entre la escritura y la relectura queda una
+ventana en la que las dos personas pueden leerse a sí mismas. Lo que se consigue
+es reducirla a dos peticiones en vez de las horas que lleva desfasada una lista
+generada por la mañana. Cerrarla del todo exigiría algo que Jira no da.
+
+### El estado, solo si se ganó
+
+`to` transiciona después de la asignación y **solo si la relectura confirmó que
+se ganó**: transicionar antes dejaría «En curso» una tarea que acaba de ser de
+otra persona, y el estado es lo que el resto del equipo lee como «esta ya la
+están haciendo».
+
+Son dos operaciones, así que la transición puede caer sola. Si cae, la toma
+**no** se niega —la asignación ya está escrita y es ella la que reserva la
+tarea—: vuelve `transitionError` con el motivo y la lista de estados posibles.
+Negarla llevaría a reintentar sobre algo que ya es de quien llama.
+
+### Medido el 2026-10-10, contra LAN
+
+`taken`, `done`, «ya era tuya», la toma de una libre con su relectura, repetirla,
+una transición válida y una inválida: comprobados ejecutando la herramienta
+contra el proyecto real.
+
+⚠️ **`started-unassigned` y `lost-race` no están medidos.** El primero porque ese
+día no existía en LAN ningún issue sin asignar y empezado —`assignee IS EMPTY AND
+statusCategory = "In Progress"` devolvía cero—, y el segundo porque exige que dos
+personas escriban a la vez. Las dos ramas se afirman por construcción, no por
+observación.
+
+---
+
 ## 1.6.0 — 2026-10-10
 
 Un parámetro mal nombrado dice cómo se llama de verdad, y el alta contrasta con
