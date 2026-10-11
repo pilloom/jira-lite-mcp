@@ -25,12 +25,39 @@ interface Leido {
     assignee: { accountId: string; displayName: string } | null;
 }
 
+/**
+ * Recorta el usuario de Jira a lo que esta herramienta decide con él.
+ *
+ * 🔴 **Explícito, no por tipo.** Devolver `fields.assignee` tal cual lo colaba
+ * entero en la respuesta —`self`, `avatarUrls`, `timeZone`, `accountType` y el
+ * **correo** de la persona— aunque el tipo declarase dos campos: un tipo de
+ * menos describe mal la respuesta de Jira, no la recorta. Medido el 2026-10-11
+ * llamando a la herramienta ya desplegada.
+ */
+function quienEs(assignee: Record<string, unknown> | null): Leido['assignee'] {
+    if (assignee === null) {
+        return null;
+    }
+
+    return {
+        accountId: String(assignee.accountId ?? ''),
+        displayName: String(assignee.displayName ?? ''),
+    };
+}
+
 async function leer(client: AxiosInstance, issueKey: string): Promise<Leido> {
     const response = await client.get<{
         fields: {
             summary: string;
             status: { name: string; statusCategory: { key: string } };
-            assignee: { accountId: string; displayName: string } | null;
+            /**
+             * El usuario **como lo manda Jira**, con todo lo que trae. Se
+             * declara entero —y no solo los dos campos que se usan— porque
+             * tiparlo de menos no recorta la respuesta: deja pasar el objeto
+             * crudo creyendo que es el recortado, que es justo lo que hacía
+             * esta función.
+             */
+            assignee: Record<string, unknown> | null;
         };
     }>(`/rest/api/3/issue/${issueKey}`, { params: { fields: CAMPOS } });
 
@@ -46,7 +73,7 @@ async function leer(client: AxiosInstance, issueKey: string): Promise<Leido> {
         // dar por libre lo que ya tiene a alguien dentro es justo el fallo que
         // esta herramienta existe para evitar.
         category: fields.status.statusCategory.key,
-        assignee: fields.assignee,
+        assignee: quienEs(fields.assignee),
     };
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "jira-lite-mcp",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "type": "module",
   "description": "Servidor MCP para Jira Cloud orientado a productividad con Claude Code",
   "main": "index.js",
