@@ -10,6 +10,64 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.9.0 — 2026-10-26
+
+### Un valor de JQL que Jira no resuelve se ignoraba en silencio
+
+`status != Finalizada` devolvía los issues **finalizados**, con `"status":
+"Finalizada"` en su propia fila. No era que se ignorase el filtro: el JQL se
+pasa tal cual y **la API de Jira devuelve exactamente lo mismo**. La causa es que
+«Finalizada» es el nombre *traducido* del estado del sistema `Done`, y JQL solo
+acepta el nombre sin traducir.
+
+🔴 **Jira no da error con un valor que no reconoce, lo trata como que no coincide
+con nada.** Así que la consulta se ejecuta: con `=` devuelve cero resultados y
+con `!=` los devuelve **todos**. Comprobado en LAN, con un solo estado llamado
+así:
+
+| JQL | Resultado |
+| --- | --- |
+| `status != Finalizada` | las dos filas, incluida la finalizada |
+| `status = Finalizada` | cero filas |
+| `status != Pepito` (inventado) | las dos filas |
+| `status != Done` | la correcta |
+| `status != 10017` (id) | la correcta |
+
+**Y el bucle lo cerraba esta herramienta**: la búsqueda devuelve `"status":
+"Finalizada"`, y ese valor no vale en el JQL de la llamada siguiente. Quien
+consulta escribe el nombre que la respuesta anterior le acaba de dar.
+
+Ahora la respuesta lo declara en `warning`, con el nombre que sí acepta JQL:
+
+> `"Finalizada"` es el nombre visible del estado en este sitio, pero JQL solo
+> acepta el nombre sin traducir: hay que escribir `Done` —entre comillas si
+> lleva espacios— o su id `10017`. […] con `=` la consulta devuelve cero
+> resultados y con `!=` los devuelve todos, así que el resultado de arriba no
+> responde a lo que se preguntó.
+
+Cubre `status` y el tipo de issue, que son los campos cuyos nombres traduce
+Jira, y se emite **haya resultados o no**: con `!=` el fallo produce filas de
+más, no de menos, y ahí una respuesta llena engaña igual que una vacía. Si el
+valor no corresponde a ningún nombre visible, se dice que no resuelve y se deja
+ahí.
+
+Sustituye al aviso que había para el tipo de issue, que solo saltaba cuando la
+búsqueda venía vacía —nunca con `!=`— y no decía el nombre bueno, solo que
+había que usar el inglés.
+
+El id se omite cuando varios campos comparten el nombre visible: hay un «Tarea»
+por proyecto, con su propio id, y sugerir uno al azar cambia un fallo silencioso
+por otro.
+
+⚠️ **Quién decide si un valor resuelve es Jira, no este servidor.** Se pregunta
+al autocompletado de JQL, que es el mismo motor que interpreta la consulta, en
+lugar de deducirlo de un catálogo: deducirlo arriesga el falso positivo, que es
+el peor resultado para un aviso. Cuesta una llamada por valor nombrado, y solo
+cuando el JQL menciona esos campos. Si la comprobación falla, la búsqueda
+responde sin aviso en lugar de fallar por un error ajeno a ella.
+
+---
+
 ## 1.8.0 — 2026-10-26
 
 ### `jira_search` mandaba la descripción de cada issue sin que nadie la pidiera
