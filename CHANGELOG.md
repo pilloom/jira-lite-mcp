@@ -10,6 +10,39 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.8.0 — 2026-10-26
+
+### `jira_search` mandaba la descripción de cada issue sin que nadie la pidiera
+
+`fields` se aceptaba pero no recortaba nada: la descripción iba **siempre**, y
+`fields` solo decidía qué se duplicaba dentro de `customFields`. En un proyecto
+con descripciones largas eso son 60-90 KB por página de 20 issues, suficiente
+para que el cliente desvíe el resultado a fichero y la búsqueda deje de servir
+para lo único que se le pide a una búsqueda: **censar**.
+
+Medido en LAN: 25 issues pesaban **82 KB**. Los mismos 30 pesan ahora **6,5 KB**.
+
+🔴 **La descripción ya no viene por defecto.** La respuesta base es `key`,
+`summary`, `status` y `assignee`; quien necesite la descripción la pide con
+`fields: ["description"]`. Para leer un issue está `jira_get_issue`, que es
+donde esa lectura no se multiplica por veinte.
+
+Pedir un campo que la búsqueda ya devuelve con nombre propio tampoco lo duplica:
+`fields: ["summary"]` devolvía el título dos veces, una arriba y otra dentro de
+`customFields`. Los nombres se resuelven contra el catálogo de la instancia, así
+que el nombre visible traducido —`Descripción`— llega al mismo sitio que el
+identificador.
+
+### `limit` se dijo mejor, porque no se encontraba
+
+No es un cambio de comportamiento: el tope de 20 era el **valor por defecto** de
+`limit`, no un tope. Se reportó como «el tope son 20, y `startAt`/`maxResults` se
+rechazan» —se rechazan porque el parámetro se llama `limit`—, de modo que la
+descripción lo dice ahora explícitamente, junto con que esta herramienta no
+pagina y que subir `limit` es la forma de abarcar un conjunto mayor.
+
+---
+
 ## 1.7.1 — 2026-10-11
 
 ### `jira_claim_issue` devolvía el usuario entero, con su correo
