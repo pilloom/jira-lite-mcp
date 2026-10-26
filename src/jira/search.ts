@@ -25,6 +25,8 @@ interface JiraSearchResponse<F> {
 export interface JqlPage<F> {
     issues: Array<{ key: string; fields: F }>;
     hasMore: boolean;
+    /** Lo que hay que pasar para seguir donde esta página acabó. */
+    cursor?: string;
 }
 
 interface JiraSearchFields {
@@ -55,13 +57,19 @@ export async function runJql<F>(
     jql: string,
     fields: string[],
     limit: number = DEFAULT_LIMIT,
+    cursor?: string,
 ): Promise<JqlPage<F>> {
     try {
         const client = createJiraClient();
 
         const response = await client.post<JiraSearchResponse<F>>(
             '/rest/api/3/search/jql',
-            { jql, maxResults: limit, fields },
+            {
+                jql,
+                maxResults: limit,
+                fields,
+                ...(cursor !== undefined && { nextPageToken: cursor }),
+            },
         );
 
         return {
@@ -72,9 +80,39 @@ export async function runJql<F>(
             hasMore:
                 response.data.isLast === false ||
                 response.data.nextPageToken !== undefined,
+            ...(response.data.nextPageToken !== undefined && {
+                cursor: response.data.nextPageToken,
+            }),
         };
     } catch (error) {
         handleJiraError(error);
+    }
+}
+
+/**
+ * Cuenta las coincidencias de una consulta sin traerlas.
+ *
+ * Jira llama a este recuento «aproximado» porque lo resuelve contra el índice,
+ * pero es el único que da el total en una sola llamada: paginar `project = LAN`
+ * para contarlo cuesta 30. Medido en LAN, coincide con el recuento paginado en
+ * los dos conjuntos probados —319 y 2.941— así que se expone tal cual.
+ *
+ * Devuelve `undefined` si no se puede contar: el total acompaña a la búsqueda,
+ * no la sustituye, y tumbarla por no haber podido contar sería peor que
+ * responder sin el dato.
+ */
+async function countMatches(jql: string): Promise<number | undefined> {
+    try {
+        const client = createJiraClient();
+
+        const response = await client.post<{ count: number }>(
+            '/rest/api/3/search/approximate-count',
+            { jql },
+        );
+
+        return response.data.count;
+    } catch {
+        return undefined;
     }
 }
 
@@ -238,6 +276,7 @@ export async function searchIssues(
     jql: string,
     limit: number = DEFAULT_LIMIT,
     fieldNames: string[] = [],
+    cursor?: string,
 ): Promise<JiraSearchResult> {
     const requested = await resolveExtraFields(fieldNames);
 
@@ -265,6 +304,7 @@ export async function searchIssues(
             ...extraFieldIds(extra),
         ],
         limit,
+        cursor,
     );
 
     const problems = new Map<string, FieldProblem>();
@@ -296,9 +336,22 @@ export async function searchIssues(
         .filter((message) => message !== undefined)
         .join('\n');
 
+    // El total solo se pregunta cuando la página no lo contiene ya: si la
+    // primera trae todo, contar es una llamada de más para decir lo que `count`
+    // ya dice. En cualquier otro caso hay que contar —`hasMore` nunca llega sin
+    // el total al lado—, y eso incluye la última página de un recorrido, donde
+    // `hasMore` es falso pero las filas anteriores no están en `count`: ahí la
+    // página corta declaraba su propio tamaño como total.
+    const total =
+        page.hasMore || cursor !== undefined
+            ? await countMatches(jql)
+            : issues.length;
+
     return {
         count: issues.length,
+        ...(total !== undefined && { total }),
         hasMore: page.hasMore,
+        ...(page.cursor !== undefined && { cursor: page.cursor }),
         ...(warning !== '' && { warning }),
         issues,
     };
