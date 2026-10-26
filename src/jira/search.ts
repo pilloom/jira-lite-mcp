@@ -35,8 +35,11 @@ interface JiraSearchFields {
     assignee: {
         displayName: string;
     } | null;
-    /** Documento ADF: la API v3 nunca devuelve texto plano aquí. */
-    description: unknown;
+    /**
+     * Documento ADF: la API v3 nunca devuelve texto plano aquí. Ausente
+     * mientras nadie pida el campo.
+     */
+    description?: unknown;
     [key: string]: unknown;
 }
 
@@ -247,12 +250,57 @@ function describeProblem(
     return `No se pudo leer "${requested}" en ${keys.length} de los issues devueltos (${listed}${rest}). ${reason}`;
 }
 
+/**
+ * Campos que la búsqueda ya devuelve con nombre propio. Nombrar uno de ellos
+ * en `fields` pide ese campo nativo, no una copia dentro de `customFields`:
+ * `fields: ["summary"]` devolvía el summary dos veces.
+ */
+const NATIVE_FIELD_IDS = new Set([
+    'key',
+    'summary',
+    'status',
+    'assignee',
+    'description',
+]);
+
+/**
+ * Identificador nativo al que apunta un campo pedido, si apunta a alguno. Se
+ * resuelve contra el catálogo de la instancia, de modo que el nombre visible
+ * traducido —`Descripción`— llega al mismo sitio que el identificador.
+ *
+ * Un nombre ambiguo no se trata como nativo: si hay varios campos llamados
+ * igual, lo que se pidió no es el nativo sino uno de ellos.
+ */
+function nativeFieldId(field: JiraExtraField): string | undefined {
+    if (field.candidates.length !== 1) {
+        return undefined;
+    }
+
+    const { id } = field.candidates[0];
+
+    return NATIVE_FIELD_IDS.has(id) ? id : undefined;
+}
+
 export async function searchIssues(
     jql: string,
     limit: number = DEFAULT_LIMIT,
-    extraFieldNames: string[] = [],
+    fieldNames: string[] = [],
 ): Promise<JiraSearchResult> {
-    const extra = await resolveExtraFields(extraFieldNames);
+    const requested = await resolveExtraFields(fieldNames);
+
+    const native = new Set(
+        requested.map(nativeFieldId).filter((id) => id !== undefined),
+    );
+
+    const extra = requested.filter(
+        (field) => nativeFieldId(field) === undefined,
+    );
+
+    // La descripción se trae solo si se pide: es el campo que decide el tamaño
+    // de la respuesta —un issue con la descripción escrita pesa más que los
+    // otros veinte juntos— y censar no la necesita. Para leer un issue está
+    // `jira_get_issue`.
+    const wantsDescription = native.has('description');
 
     const page = await runJql<JiraSearchFields>(
         jql,
@@ -260,7 +308,7 @@ export async function searchIssues(
             'summary',
             'status',
             'assignee',
-            'description',
+            ...(wantsDescription ? ['description'] : []),
             ...extraFieldIds(extra),
         ],
         limit,
@@ -273,7 +321,9 @@ export async function searchIssues(
         summary: issue.fields.summary,
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName ?? null,
-        description: adfToMarkdown(issue.fields.description),
+        ...(wantsDescription && {
+            description: adfToMarkdown(issue.fields.description),
+        }),
         ...(extra.length > 0 && {
             customFields: readSearchFields(
                 extra,

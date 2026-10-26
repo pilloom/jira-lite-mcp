@@ -6,7 +6,7 @@ export const searchTool = {
     name: 'jira_search',
 
     description:
-        'Busca issues en Jira usando una consulta JQL. Útil para encontrar tickets por proyecto, estado, asignación, sprint, etc. Devuelve los issues de una página junto con si quedan más resultados; la API de búsqueda no informa del total de coincidencias. Los campos personalizados no se devuelven si no se piden: hay que nombrarlos en "fields", y un issue sin ese campo no interrumpe la búsqueda, se informa en "warning".',
+        'Busca issues en Jira usando una consulta JQL. Útil para encontrar tickets por proyecto, estado, asignación, sprint, etc. De cada issue devuelve clave, título, estado y asignado; cualquier otro campo —incluida la DESCRIPCIÓN, que no viene por defecto porque pesa más que todo lo demás junto— hay que nombrarlo en "fields". Un issue sin ese campo no interrumpe la búsqueda, se informa en "warning". Devuelve los issues de una página junto con si quedan más resultados en "hasMore": la API de búsqueda no informa del total de coincidencias, y para traer más hay que subir "limit".',
 
     inputSchema: z.strictObject({
         jql: z
@@ -17,12 +17,14 @@ export const searchTool = {
         limit: z
             .number()
             .optional()
-            .describe('Número máximo de issues a devolver. Por defecto 20'),
+            .describe(
+                'Número máximo de issues a devolver. Por defecto 20, y se puede subir: es lo que hay que hacer para abarcar un conjunto más grande, porque esta herramienta no pagina',
+            ),
         fields: z
             .array(z.string())
             .optional()
             .describe(
-                'Campos adicionales a incluir en cada issue, por su nombre visible o su identificador. Ejemplo: ["Criterios de aceptación"]',
+                'Campos a incluir en cada issue además de clave, título, estado y asignado, por su nombre visible o su identificador. Ejemplo: ["Criterios de aceptación"]. "description" trae la descripción, que no viene por defecto',
             ),
     }),
 

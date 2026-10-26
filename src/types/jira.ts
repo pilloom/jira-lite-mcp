@@ -22,7 +22,8 @@ export interface JiraIssueSummary {
     summary: string;
     status: string;
     assignee: string | null;
-    description: string | null;
+    /** Solo si se pidió en `fields`: pesa más que el resto de la respuesta. */
+    description?: string | null;
     /** Solo los campos adicionales que se pidieron por su nombre. */
     customFields?: Record<string, unknown>;
 }
