@@ -31,8 +31,15 @@ export interface JiraIssueSummary {
 export interface JiraSearchResult {
     /** Issues devueltos en esta página, no el total de coincidencias. */
     count: number;
+    /**
+     * Coincidencias de la consulta entera. Ausente solo si no se pudo contar.
+     * Jira lo resuelve contra el índice y lo declara aproximado.
+     */
+    total?: number;
     /** Hay más resultados de los que caben en el límite pedido. */
     hasMore: boolean;
+    /** Se pasa como `cursor` para traer la página siguiente. */
+    cursor?: string;
     /**
      * Lo que haga falta saber para no malinterpretar los issues devueltos: el
      * motivo probable de un resultado vacío, o los campos adicionales que no

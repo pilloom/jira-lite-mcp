@@ -6,7 +6,7 @@ export const searchTool = {
     name: 'jira_search',
 
     description:
-        'Busca issues en Jira usando una consulta JQL. Útil para encontrar tickets por proyecto, estado, asignación, sprint, etc. De cada issue devuelve clave, título, estado y asignado; cualquier otro campo —incluida la DESCRIPCIÓN, que no viene por defecto porque pesa más que todo lo demás junto— hay que nombrarlo en "fields". Un issue sin ese campo no interrumpe la búsqueda, se informa en "warning". Devuelve los issues de una página junto con si quedan más resultados en "hasMore": la API de búsqueda no informa del total de coincidencias, y para traer más hay que subir "limit".',
+        'Busca issues en Jira usando una consulta JQL. Útil para encontrar tickets por proyecto, estado, asignación, sprint, etc. De cada issue devuelve clave, título, estado y asignado; cualquier otro campo —incluida la DESCRIPCIÓN, que no viene por defecto porque pesa más que todo lo demás junto— hay que nombrarlo en "fields". Un issue sin ese campo no interrumpe la búsqueda, se informa en "warning". "total" dice cuántos issues cumplen la consulta entera y "count" cuántos trae esta página; si "hasMore" es cierto, se pasa el "cursor" que devuelve para traer la siguiente, y así hasta que no venga ninguno.',
 
     inputSchema: z.strictObject({
         jql: z
@@ -18,7 +18,7 @@ export const searchTool = {
             .number()
             .optional()
             .describe(
-                'Número máximo de issues a devolver. Por defecto 20, y se puede subir: es lo que hay que hacer para abarcar un conjunto más grande, porque esta herramienta no pagina',
+                'Número máximo de issues por página. Por defecto 20. Subirlo trae más de una vez; para recorrer un conjunto entero está "cursor"',
             ),
         fields: z
             .array(z.string())
@@ -26,10 +26,26 @@ export const searchTool = {
             .describe(
                 'Campos a incluir en cada issue además de clave, título, estado y asignado, por su nombre visible o su identificador. Ejemplo: ["Criterios de aceptación"]. "description" trae la descripción, que no viene por defecto',
             ),
+        cursor: z
+            .string()
+            .optional()
+            .describe(
+                'Continúa desde donde acabó la llamada anterior: el valor de "cursor" que devolvió. Hay que repetir el mismo "jql", y conviene que lleve un ORDER BY para que el recorrido no dependa del orden que elija Jira',
+            ),
     }),
 
-    async handler(args: { jql: string; limit?: number; fields?: string[] }) {
-        const result = await searchIssues(args.jql, args.limit, args.fields);
+    async handler(args: {
+        jql: string;
+        limit?: number;
+        fields?: string[];
+        cursor?: string;
+    }) {
+        const result = await searchIssues(
+            args.jql,
+            args.limit,
+            args.fields,
+            args.cursor,
+        );
 
         return {
             content: [

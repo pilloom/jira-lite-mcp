@@ -10,6 +10,49 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.10.0 — 2026-10-26
+
+### `jira_search` no dejaba recorrer un censo más largo que una página
+
+`hasMore: true` decía que quedaban resultados y no daba forma de pedirlos: el
+`nextPageToken` del endpoint no se exponía. Con `limit` alto se llegaba más
+lejos, pero un conjunto indefinido no se podía recorrer, y **no había manera de
+saber cuántos faltaban**.
+
+El apaño que queda a mano cuando no hay cursor es pedir el mismo conjunto en dos
+órdenes opuestos y unir las mitades. No funciona: no hay forma de saber si las
+dos mitades se tocan, y un solape —que parece prueba de cobertura— es compatible
+con que falte un ticket en medio.
+
+**Ahora la respuesta trae `cursor`**, que se pasa en la llamada siguiente con el
+mismo `jql` para continuar donde se quedó, hasta que no venga ninguno.
+
+**Y trae `total`**, las coincidencias de la consulta entera, no de la página.
+Jira lo resuelve contra el índice en una sola llamada —`total: -1` es lo que da
+el endpoint de búsqueda, pero el de recuento sí responde— y lo declara
+«aproximado»; medido en LAN, coincide con el recuento paginado en los dos
+conjuntos probados, 319 y 2.941, así que se expone tal cual.
+
+El recuento solo se pide cuando la respuesta no lo contiene ya: si la primera
+página trae todo el conjunto, `total` es `count` y no se gasta una llamada en
+decir lo que ya se sabe. Lo que no ocurre es que `hasMore` llegue sin el total
+al lado.
+
+⚠️ **Conviene que el `jql` lleve un `ORDER BY` al recorrer.** Sin él el orden lo
+elige Jira, y el recorrido depende de que no cambie entre páginas.
+
+Comprobado recorriendo el censo entero de LAN: **319 filas en 4 páginas, 319
+claves distintas, cero solapamiento**, y `total: 319` en las cuatro.
+
+### Un dato que delata el filtro mal escrito
+
+`total` junto al aviso de la 1.9.0 convierte el fallo de los nombres traducidos
+en algo que salta a la vista: `status != Finalizada` sobre un proyecto responde
+`total: 2941` —el proyecto entero— además del aviso. Un censo que debía traer
+treinta tickets y declara casi tres mil ya no se puede confundir con uno bueno.
+
+---
+
 ## 1.9.0 — 2026-10-26
 
 ### Un valor de JQL que Jira no resuelve se ignoraba en silencio
