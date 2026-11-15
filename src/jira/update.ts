@@ -2,6 +2,7 @@ import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { buildCustomFields, findField } from './fields.js';
 import { markdownToAdf } from './markdown.js';
+import { resolveMentions } from './mentions.js';
 import { getEditableFields } from './meta.js';
 import { resolveAccountId } from './users.js';
 import { addWatchers } from './watchers.js';
@@ -101,7 +102,9 @@ export async function updateIssue(
                 ? await resolveAccountId(input.assignee)
                 : undefined;
 
-        const fields = buildFields(input, spec, assigneeId);
+        const fields = await resolveMentions(
+            buildFields(input, spec, assigneeId),
+        );
 
         const client = createJiraClient();
 

@@ -206,6 +206,15 @@ escribe se traduce al formato de la API. Cubre listas de tareas —las casillas 
 editor—, listas con viñetas y numeradas anidadas, encabezados, citas, bloques de código,
 reglas, tablas con la sintaxis de GitHub y, en línea, negrita, cursiva, tachado, código y enlaces.
 
+**Las menciones se escriben `@[correo, nombre o accountId]`.** Se resuelven a la persona antes de
+enviar y llegan como mención de verdad: Jira la enlaza y le avisa. Una que no designa a nadie, o
+a varias personas, rechaza la escritura entera en lugar de publicarla como texto plano. Funciona
+en comentarios, descripciones, campos `textarea` y comentarios de worklog.
+
+```json
+{ "body": "Listo para revisar, @[ana@empresa.com]" }
+```
+
 ```json
 { "customFields": { "Criterios de aceptación": "- [ ] Sin marcar\n- [x] Hecho" } }
 ```

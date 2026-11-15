@@ -4,6 +4,7 @@ import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { buildCustomFields, findField } from './fields.js';
 import { markdownToAdf } from './markdown.js';
+import { resolveMentions } from './mentions.js';
 import { getIssueTypeFields } from './meta.js';
 import { resolveAccountId } from './users.js';
 import { addWatchers } from './watchers.js';
@@ -274,10 +275,14 @@ export async function createIssue(
                 ? await resolveAccountId(input.assignee)
                 : undefined;
 
-        const fields = buildFields(
-            { ...input, issueType: meta.issueType },
-            meta.fields,
-            assigneeId,
+        // Las menciones se resuelven antes del dryRun: una que no designa a
+        // nadie tiene que fallar al comprobar, no al crear.
+        const fields = await resolveMentions(
+            buildFields(
+                { ...input, issueType: meta.issueType },
+                meta.fields,
+                assigneeId,
+            ),
         );
 
         await assertPolicyFields(
