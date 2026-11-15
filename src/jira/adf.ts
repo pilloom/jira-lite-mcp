@@ -21,6 +21,7 @@ export interface AdfNode {
     marks?: AdfMark[];
     content?: AdfNode[];
     attrs?: {
+        id?: string;
         text?: string;
         shortName?: string;
         url?: string;

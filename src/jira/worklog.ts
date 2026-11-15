@@ -2,6 +2,7 @@ import { adfToMarkdown } from './adf.js';
 import { createJiraClient } from './client.js';
 import { handleJiraError } from './error.js';
 import { markdownToAdf } from './markdown.js';
+import { resolveMentions } from './mentions.js';
 
 import type {
     JiraWorklogEntry,
@@ -80,7 +81,9 @@ export async function addWorklog(
                 // decidir cuántas horas son un día.
                 timeSpent: input.timeSpent,
                 ...(input.comment !== undefined && {
-                    comment: markdownToAdf(input.comment),
+                    comment: await resolveMentions(
+                        markdownToAdf(input.comment),
+                    ),
                 }),
                 ...(input.started !== undefined && {
                     started: toJiraTimestamp(input.started),

@@ -11,7 +11,12 @@ import type { AdfDocument, AdfMark, AdfNode } from './adf.js';
  * Cubre lo que aparece en un ticket escrito a mano: listas de tareas, listas
  * con viñetas y numeradas —anidadas por indentación—, encabezados, citas,
  * bloques de código, reglas, tablas, y en línea negrita, cursiva, tachado,
- * código y enlaces. La dirección contraria vive en `adf.ts`.
+ * código, enlaces y menciones. La dirección contraria vive en `adf.ts`.
+ *
+ * Una mención se escribe `@[correo, nombre o accountId]`. Aquí solo se marca
+ * —un nodo `mention` sin `id`, con la referencia en `text`—: saber a quién
+ * designa exige consultar Jira, y esta conversión es síncrona. La completa
+ * `resolveMentions`, en `mentions.ts`, antes de enviar el documento.
  */
 
 type ListType = 'bulletList' | 'orderedList' | 'taskList';
@@ -50,6 +55,9 @@ const INLINE = new RegExp(
         '\\*(\\S(?:[^*]*?\\S)?)\\*',
         '(?<![A-Za-z0-9])_(\\S(?:[^_]*?\\S)?)_(?![A-Za-z0-9])',
         '~~(\\S(?:.*?\\S)?)~~',
+        // Va antes que el enlace y no admite `(` detrás: `@[texto](url)` es un
+        // enlace precedido de una arroba, no una mención.
+        '@\\[([^\\]\\n]*[^\\]\\s][^\\]\\n]*)\\](?!\\()',
         '\\[([^\\]]*)\\]\\(([^)\\s]+)\\)',
     ].join('|'),
     'g',
@@ -73,8 +81,19 @@ function inlineNodes(text: string): AdfNode[] {
     };
 
     for (const match of text.matchAll(INLINE)) {
-        const [whole, , code, strongStars, strongBars, emStar, emBar, strike, linkText, href] =
-            match;
+        const [
+            whole,
+            ,
+            code,
+            strongStars,
+            strongBars,
+            emStar,
+            emBar,
+            strike,
+            mention,
+            linkText,
+            href,
+        ] = match;
 
         const at = match.index ?? 0;
 
@@ -91,6 +110,8 @@ function inlineNodes(text: string): AdfNode[] {
             nodes.push(textNode((emStar ?? emBar)!, [{ type: 'em' }]));
         } else if (strike !== undefined) {
             nodes.push(textNode(strike, [{ type: 'strike' }]));
+        } else if (mention !== undefined) {
+            nodes.push({ type: 'mention', attrs: { text: mention.trim() } });
         } else if (href !== undefined) {
             nodes.push(
                 textNode(linkText || href, [

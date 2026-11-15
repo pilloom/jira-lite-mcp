@@ -10,6 +10,41 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.11.0 — 2026-11-15
+
+### No había forma de mencionar a nadie
+
+El conversor de markdown solo producía texto: un `@Pedro` en un comentario
+llegaba a Jira como texto plano, que **parece una mención y no avisa a nadie**.
+
+**Ahora `@[correo, nombre o accountId]` es una mención.** Se resuelve a la
+persona antes de enviar y Jira la enlaza y le avisa. Funciona en todo lo que se
+escribe en markdown: comentarios, descripciones, campos `textarea` y
+comentarios de worklog. En `jira_create_issue` se resuelve también con
+`dryRun`, de modo que una mención rota falla al comprobar y no al crear.
+
+Una referencia que no designa a nadie, o que designa a varias personas,
+rechaza la escritura entera: publicar el texto sin la mención sería repetir en
+silencio el fallo que esto corrige. `@[texto](url)` sigue siendo un enlace, y lo
+que va entre acentos graves no se toca.
+
+### Un nombre de una palabra se tomaba por accountId
+
+Bastaba con no llevar arroba ni espacios para enviarse tal cual como
+identificador: asignar a «Pedro» fallaba con un error de Jira que no decía por
+qué. Ahora solo se da por accountId lo que tiene su forma; lo demás se busca, y
+si la búsqueda no encuentra nada se comprueba como identificador antes de
+rendirse.
+
+### Un nombre completo y exacto se rechazaba por ambiguo
+
+La búsqueda de usuarios de Jira es difusa: un nombre completo trae también a
+quien comparte un apellido, y eso bastaba para rechazarlo. Ahora, si una sola
+coincidencia es exacta —nombre visible o correo—, se elige esa. Afecta también
+a la persona asignada y a los observadores.
+
+---
+
 ## 1.10.0 — 2026-10-26
 
 ### `jira_search` no dejaba recorrer un censo más largo que una página
