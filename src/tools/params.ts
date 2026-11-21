@@ -25,7 +25,10 @@ const EQUIVALENTS: Record<string, string> = {
     priorityName: 'priority',
     project_key: 'project',
     projectKey: 'project',
-    timeestimate: 'originalEstimate',
+    remaining_estimate: 'remainingEstimate',
+    // En Jira `timeestimate` es el restante, no la estimación original.
+    timeestimate: 'remainingEstimate',
+    timeoriginalestimate: 'originalEstimate',
     timetracking: 'originalEstimate',
 };
 

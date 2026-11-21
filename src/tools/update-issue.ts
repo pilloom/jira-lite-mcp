@@ -31,7 +31,13 @@ export const updateIssueTool = {
             .string()
             .optional()
             .describe(
-                'Estimación en el formato de Jira. Ejemplos: 30m, 1h 30m, 8h',
+                'Estimación en el formato de Jira. Ejemplos: 30m, 1h 30m, 8h. Jira no recalcula el tiempo restante al cambiarla: indica también remainingEstimate si debe cambiar',
+            ),
+        remainingEstimate: z
+            .string()
+            .optional()
+            .describe(
+                'Tiempo restante en el formato de Jira. Ejemplos: 30m, 1h 30m, 8h',
             ),
         watchers: z
             .array(z.string())

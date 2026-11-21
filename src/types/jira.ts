@@ -11,6 +11,8 @@ export interface JiraIssue {
     created: string;
     updated: string;
     originalEstimate: string | null;
+    /** Lo que queda según Jira; no se recalcula al cambiar la estimación. */
+    remainingEstimate: string | null;
     timeSpent: string | null;
     description: string | null;
     customFields?: Record<string, unknown>;
@@ -90,6 +92,7 @@ export interface JiraWorklogEntry {
 export interface JiraWorklogList {
     key: string;
     originalEstimate: string | null;
+    remainingEstimate: string | null;
     /** Total registrado, tal como lo expresa Jira según la jornada del sitio. */
     totalSpent: string | null;
     totalSpentSeconds: number;
@@ -289,6 +292,8 @@ export interface JiraUpdateIssueInput {
     labels?: string[];
     /** Estimación en el formato de Jira: 30m, 1h 30m, 8h. */
     originalEstimate?: string;
+    /** Tiempo restante en el mismo formato. */
+    remainingEstimate?: string;
     /** Observadores a añadir: correos, nombres o identificadores de cuenta. */
     watchers?: string[];
     /** Campos personalizados indexados por nombre visible o por identificador. */
@@ -299,6 +304,13 @@ export interface JiraUpdatedIssue {
     key: string;
     /** Identificadores de los campos efectivamente enviados. */
     updated: string[];
+    /** Estimación tal como quedó, releída si se tocó alguna de las dos. */
+    timetracking?: {
+        originalEstimate: string | null;
+        remainingEstimate: string | null;
+    };
+    /** Presente si el restante quedó distinto de la estimación sin pedirlo. */
+    warning?: string;
     watchers?: string[];
 }
 

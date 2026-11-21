@@ -59,8 +59,19 @@ function buildFields(
 
     // Como al crear: Jira acepta la estimación aunque `timetracking` no figure
     // en la pantalla de edición, así que no se comprueba contra el esquema.
-    if (input.originalEstimate !== undefined) {
-        fields.timetracking = { originalEstimate: input.originalEstimate };
+    // Las dos van en el mismo objeto: la que no se indica queda como estaba.
+    if (
+        input.originalEstimate !== undefined ||
+        input.remainingEstimate !== undefined
+    ) {
+        fields.timetracking = {
+            ...(input.originalEstimate !== undefined && {
+                originalEstimate: input.originalEstimate,
+            }),
+            ...(input.remainingEstimate !== undefined && {
+                remainingEstimate: input.remainingEstimate,
+            }),
+        };
     }
 
     if (input.priority !== undefined) {
@@ -91,6 +102,51 @@ function buildFields(
     return fields;
 }
 
+/**
+ * Relee la estimación tras escribirla. Jira no recalcula el restante al cambiar
+ * la estimación original, y la respuesta de la edición no trae nada: sin esto,
+ * un restante viejo quedaba en el issue sin que nada lo señalara.
+ */
+async function readTimetracking(
+    input: JiraUpdateIssueInput,
+): Promise<Pick<JiraUpdatedIssue, 'timetracking' | 'warning'>> {
+    const response = await createJiraClient().get<{
+        fields: {
+            timetracking?: {
+                originalEstimate?: string;
+                originalEstimateSeconds?: number;
+                remainingEstimate?: string;
+                remainingEstimateSeconds?: number;
+            };
+        };
+    }>(`/rest/api/3/issue/${input.issueKey}`, {
+        params: { fields: 'timetracking' },
+    });
+
+    const read = response.data.fields.timetracking ?? {};
+
+    const timetracking = {
+        originalEstimate: read.originalEstimate ?? null,
+        remainingEstimate: read.remainingEstimate ?? null,
+    };
+
+    // Solo se avisa si se cambió la estimación sin decir nada del restante y
+    // los dos no coinciden. Con horas registradas puede ser lo correcto, así
+    // que no se corrige: se dice, y lo decide quien llama.
+    const stale =
+        input.originalEstimate !== undefined &&
+        input.remainingEstimate === undefined &&
+        read.remainingEstimateSeconds !== undefined &&
+        read.remainingEstimateSeconds !== read.originalEstimateSeconds;
+
+    return {
+        timetracking,
+        ...(stale && {
+            warning: `Jira no recalcula el tiempo restante al cambiar la estimación: sigue en ${timetracking.remainingEstimate}. Si debe cambiar, indica remainingEstimate.`,
+        }),
+    };
+}
+
 export async function updateIssue(
     input: JiraUpdateIssueInput,
 ): Promise<JiraUpdatedIssue> {
@@ -112,6 +168,9 @@ export async function updateIssue(
             await client.put(`/rest/api/3/issue/${input.issueKey}`, { fields });
         }
 
+        const estimate =
+            'timetracking' in fields ? await readTimetracking(input) : {};
+
         const watchers =
             input.watchers !== undefined && input.watchers.length > 0
                 ? await addWatchers(input.issueKey, input.watchers)
@@ -120,6 +179,7 @@ export async function updateIssue(
         return {
             key: input.issueKey,
             updated: Object.keys(fields),
+            ...estimate,
             ...(watchers !== undefined && { watchers }),
         };
     } catch (error) {
