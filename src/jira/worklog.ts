@@ -144,6 +144,7 @@ export async function getWorklog(issueKey: string): Promise<JiraWorklogList> {
         return {
             key: issueKey,
             originalEstimate: timetracking.originalEstimate ?? null,
+            remainingEstimate: timetracking.remainingEstimate ?? null,
             // Lo calcula Jira según la jornada configurada en el sitio, así que
             // se toma tal cual en lugar de formatear los segundos aquí.
             totalSpent: timetracking.timeSpent ?? null,

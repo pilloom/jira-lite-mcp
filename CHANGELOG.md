@@ -10,6 +10,38 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.12.0 — 2026-11-21
+
+### Cambiar la estimación dejaba el tiempo restante viejo, sin aviso
+
+Jira no recalcula el restante cuando cambia la estimación original de un issue
+que ya la tenía. `jira_update_issue` solo admitía `originalEstimate`, así que el
+restante **no se podía corregir**, y tampoco se veía: ni `jira_get_issue` ni
+`jira_get_worklog` lo devolvían. Pasó en IB-79.
+
+- **`jira_update_issue` admite `remainingEstimate`**, en el mismo formato que la
+  estimación (`30m`, `1h 30m`). Se pueden indicar las dos a la vez; la que no se
+  indica queda como estaba.
+- **La respuesta relee la estimación** cuando se toca alguna de las dos y la
+  devuelve en `timetracking`. Si se cambió `originalEstimate` sin indicar
+  `remainingEstimate` y el restante no coincide, lleva un `warning`. No se
+  corrige solo: con horas registradas, que no coincidan puede ser lo correcto.
+- **`jira_get_issue` y `jira_get_worklog` devuelven `remainingEstimate`.**
+
+```json
+{
+  "key": "IB-79",
+  "updated": ["timetracking"],
+  "timetracking": { "originalEstimate": "8h", "remainingEstimate": "3h" },
+  "warning": "Jira no recalcula el tiempo restante al cambiar la estimación: sigue en 3h. Si debe cambiar, indica remainingEstimate."
+}
+```
+
+`timeestimate` se traducía en el error de parámetros como `originalEstimate`,
+pero en Jira es el restante: ahora remite a `remainingEstimate`.
+
+---
+
 ## 1.11.0 — 2026-11-15
 
 ### No había forma de mencionar a nadie

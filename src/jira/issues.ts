@@ -26,6 +26,7 @@ interface JiraApiIssueResponse {
         updated: string;
         timetracking?: {
             originalEstimate?: string;
+            remainingEstimate?: string;
             timeSpent?: string;
         };
         /** Documento ADF: la API v3 nunca devuelve texto plano aquí. */
@@ -88,6 +89,7 @@ export async function getIssue(
             created: fields.created.slice(0, 10),
             updated: fields.updated.slice(0, 10),
             originalEstimate: fields.timetracking?.originalEstimate ?? null,
+            remainingEstimate: fields.timetracking?.remainingEstimate ?? null,
             timeSpent: fields.timetracking?.timeSpent ?? null,
             description: adfToMarkdown(fields.description),
             ...(extra.length > 0 && { customFields: custom }),

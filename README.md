@@ -190,6 +190,10 @@ en la respuesta de creación de Jira, y los dos pueden quedar distintos de lo pe
 nada falle: la estimación en días se interpreta según la jornada del sitio y una asignación que
 el proyecto no admite se descarta. Se releen del issue creado para poder contrastarlos.
 
+**Al editar la estimación, el tiempo restante se dice.** Jira no recalcula el restante cuando
+cambia `originalEstimate`. `jira_update_issue` acepta `remainingEstimate` para fijarlo, relee
+los dos valores y avisa con `warning` si se cambió la estimación y el restante quedó distinto.
+
 **Un nombre repetido se rechaza en vez de devolver vacío.** Una instancia puede tener varios
 campos con el mismo nombre visible, uno por proyecto. Al leer un issue se piden todos los
 candidatos y se usa el que aplica a ese proyecto, que es lo normal; si aplica más de uno, el
