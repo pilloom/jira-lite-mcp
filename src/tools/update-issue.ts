@@ -10,7 +10,7 @@ export const updateIssueTool = {
     name: 'jira_update_issue',
 
     description:
-        'Actualiza los campos de un issue de Jira. Solo se envían los campos indicados; el resto queda intacto. Valida contra los campos que el issue admite editar, de modo que un campo no editable produce un error en lugar de descartarse en silencio. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código, enlaces y menciones («@[ana@empresa.com]», que avisan a la persona). Los campos personalizados se indican por su nombre visible o por su identificador.',
+        'Actualiza los campos de un issue de Jira. Solo se envían los campos indicados; el resto queda intacto. Valida contra los campos que el issue admite editar, de modo que un campo no editable produce un error en lugar de descartarse en silencio. Los campos de texto rico —descripción, comentarios y textarea personalizados— se escriben y se leen en markdown: listas de tareas («- [ ] criterio»), listas, encabezados, negrita, código, enlaces y menciones («@[ana@empresa.com]», que avisan a la persona). Los campos personalizados se indican por su nombre visible o por su identificador. parent cambia la épica o el principal de una subtarea, y issueType el tipo entre tipos del mismo nivel; lo que solo se puede hacer con «Mover» en la web —cambiar de nivel, o de tipo con otro flujo de trabajo— se rechaza diciéndolo, y la respuesta relee el tipo y el padre para confirmar que quedaron como se pidió.',
 
     inputSchema: strictToolSchema({
         issueKey: z.string().describe('Clave del issue. Ejemplo: ATY-123'),
@@ -44,6 +44,18 @@ export const updateIssueTool = {
             .optional()
             .describe(
                 'Observadores a añadir: correos, nombres visibles o accountIds',
+            ),
+        parent: z
+            .string()
+            .optional()
+            .describe(
+                'Clave del nuevo padre: la épica de un issue estándar, o el issue principal de una subtarea. Tiene que estar un nivel por encima. Ejemplo: ATY-10',
+            ),
+        issueType: z
+            .string()
+            .optional()
+            .describe(
+                'Nombre o id del nuevo tipo, del mismo nivel que el actual (Tarea, Historia, Error entre sí). Ejemplo: Historia',
             ),
         priority: z
             .string()

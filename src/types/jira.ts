@@ -296,6 +296,10 @@ export interface JiraUpdateIssueInput {
     remainingEstimate?: string;
     /** Observadores a añadir: correos, nombres o identificadores de cuenta. */
     watchers?: string[];
+    /** Clave del nuevo padre: la épica de un issue o el principal de una subtarea. */
+    parent?: string;
+    /** Nombre o id del nuevo tipo, del mismo nivel que el actual. */
+    issueType?: string;
     /** Campos personalizados indexados por nombre visible o por identificador. */
     customFields?: Record<string, unknown>;
 }
@@ -309,7 +313,14 @@ export interface JiraUpdatedIssue {
         originalEstimate: string | null;
         remainingEstimate: string | null;
     };
-    /** Presente si el restante quedó distinto de la estimación sin pedirlo. */
+    /** Tipo tal como quedó, releído si se pidió cambiarlo. */
+    issueType?: string;
+    /** Padre tal como quedó, releído si se pidió cambiarlo. */
+    parent?: { key: string; summary: string } | null;
+    /**
+     * Lo que quedó distinto de lo pedido sin que Jira fallara: el restante que
+     * no se recalcula, o un tipo o un padre que no se aplicaron.
+     */
     warning?: string;
     watchers?: string[];
 }
