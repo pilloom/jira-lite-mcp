@@ -6,7 +6,7 @@ export const moveToSprintTool = {
     name: 'jira_move_to_sprint',
 
     description:
-        'Mueve issues a un sprint. El sprint se indica por su identificador o por su nombre; por nombre hace falta también el proyecto, porque el nombre solo es único dentro de su tablero. Un issue pertenece a un solo sprint, así que moverlo lo saca del anterior. La respuesta dice qué issues se movieron realmente: la API los envía en lotes de 50 y uno puede fallar sin afectar al resto.',
+        'Mueve issues a un sprint. El sprint se indica por su identificador o por su nombre; por nombre hace falta también el proyecto, porque el nombre solo es único dentro de su tablero. Un issue pertenece a un solo sprint, así que moverlo lo saca del anterior. Para devolverlo al backlog, jira_move_to_backlog. La respuesta dice qué issues se movieron realmente: la API los envía en lotes de 50 y uno puede fallar sin afectar al resto.',
 
     inputSchema: z.strictObject({
         sprint: z

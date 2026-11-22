@@ -374,6 +374,16 @@ export interface JiraSprint {
     goal: string | null;
 }
 
+export interface JiraBacklogMoveResult {
+    requested: number;
+    moved: string[];
+    /** Lotes rechazados, como en `JiraSprintMoveResult`. */
+    failed?: Array<{
+        issues: string[];
+        error: string;
+    }>;
+}
+
 export interface JiraSprintMoveResult {
     sprint: {
         id: number;
