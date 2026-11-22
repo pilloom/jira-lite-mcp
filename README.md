@@ -139,13 +139,15 @@ personalizados a incluir, por su nombre visible o su identificador.
 |---|---|
 | `jira_claim_issue` | **Tomar una tarea**: comprueba que está libre, se la asigna y relee para confirmarlo |
 | `jira_create_issue` | Crear un issue, validando los campos antes de enviarlos |
-| `jira_update_issue` | Modificar campos de un issue |
+| `jira_update_issue` | Modificar campos de un issue, también su padre y su tipo |
 | `jira_transition_issue` | Cambiar de estado, opcionalmente con comentario |
 | `jira_link_issues` | Enlazar dos issues |
 | `jira_add_comment` | Comentar |
+| `jira_update_comment` | Reescribir un comentario |
 | `jira_add_worklog` | Registrar tiempo |
 | `jira_create_sprint` | Crear un sprint en el tablero scrum del proyecto |
 | `jira_move_to_sprint` | Mover issues a un sprint |
+| `jira_move_to_backlog` | Devolver issues al backlog |
 | `jira_delete` | Eliminar un comentario, un registro de tiempo o un enlace |
 
 ---
@@ -281,6 +283,27 @@ local la desplazaría al día anterior para quien esté al oeste del meridiano.
 sirve igual para poblar un sprint nuevo que para reubicar trabajo. La API mueve como mucho 50
 issues por petición y aplica cada una entera o ninguna: con más de 50 la respuesta indica
 cuáles se movieron y qué lote falló, en lugar de dar por hecho que se movió todo.
+
+**Para sacar issues de un sprint, `jira_move_to_backlog`.** Es una herramienta aparte, y no un
+`sprint: "backlog"`, porque eso chocaría con un sprint que de verdad se llamase así. Responde
+igual que `jira_move_to_sprint`, por lotes. Los sprints cerrados no se tocan: son historial.
+
+**El padre y el tipo se cambian con `jira_update_issue`.** `parent` acepta un padre que esté
+justo un nivel por encima: una épica para un issue estándar, un issue estándar de su mismo
+proyecto para una subtarea. `issueType` cambia entre tipos del mismo nivel (Tarea, Historia,
+Error). Lo demás —colgar una tarea de otra tarea, convertir una subtarea en tarea, un tipo con
+otro flujo de trabajo— solo lo hace el asistente «Mover» de la web, y la herramienta lo rechaza
+diciéndolo, antes de escribir. Como Jira puede aceptar la edición sin aplicar el tipo, la
+respuesta relee el tipo y el padre, y si no quedaron como se pidió lo dice en `warning`.
+
+```json
+{ "issueKey": "LAN-3048", "parent": "LAN-225", "issueType": "Tarea" }
+```
+
+Quitar el padre a un issue no está soportado.
+
+**Un comentario se corrige con `jira_update_comment`**, que reescribe el texto entero. Jira solo
+deja editar los propios, salvo permiso para editar todos.
 
 **Los campos personalizados hay que pedirlos.** `jira_get_issue`, `jira_explain_issue` y
 `jira_search` devuelven un juego fijo de campos; cualquier otro solo viene si se nombra en
