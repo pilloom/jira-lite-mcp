@@ -10,6 +10,43 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.13.0 — 2026-11-22
+
+### Tres cambios que obligaban a ir a la web de Jira
+
+Pedido por la consola de LAN tras revisar un backlog de unos 160 tickets.
+
+- **`jira_move_to_backlog`** devuelve issues al backlog, sacándolos del sprint
+  activo o futuro en que estén. Hasta ahora solo se podía mover de un sprint a
+  otro. Responde por lotes, como `jira_move_to_sprint`: `moved` y, si alguno
+  falla, `failed`.
+- **`jira_update_issue` admite `parent`**: la épica de un issue estándar o el
+  principal de una subtarea. Comprueba antes de escribir que el padre existe y
+  está justo un nivel por encima, y si no, dice qué esperaba. Colgar una tarea
+  de otra tarea, por ejemplo, se rechaza explicando que haría falta convertirla
+  en subtarea con «Mover».
+- **`jira_update_issue` admite `issueType`**, entre tipos del mismo nivel
+  (Tarea, Historia, Error). Un cambio de nivel se rechaza antes de escribir; si
+  Jira rechaza el cambio por el flujo de trabajo o los campos, el error remite a
+  «Mover». La respuesta relee el tipo y el padre, y si Jira aceptó sin aplicarlo,
+  lo dice en `warning`.
+
+```json
+{
+  "key": "LAN-3048",
+  "updated": ["parent", "issuetype"],
+  "issueType": "Tarea",
+  "parent": { "key": "LAN-225", "summary": "…" }
+}
+```
+
+### Corregir un comentario obligaba a borrarlo o a escribir otro
+
+**`jira_update_comment`** reescribe un comentario, en markdown y con menciones,
+como `jira_add_comment`. Jira solo deja editar los propios salvo permiso.
+
+---
+
 ## 1.12.0 — 2026-11-21
 
 ### Cambiar la estimación dejaba el tiempo restante viejo, sin aviso

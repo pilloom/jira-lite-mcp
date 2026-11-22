@@ -3,6 +3,7 @@ import { handleJiraError } from './error.js';
 import { normalizeName } from './names.js';
 
 import type {
+    JiraBacklogMoveResult,
     JiraBoard,
     JiraCreateSprintInput,
     JiraSprint,
@@ -356,6 +357,43 @@ export async function createSprint(
     }
 }
 
+interface BatchOutcome {
+    moved: string[];
+    failed: NonNullable<JiraSprintMoveResult['failed']>;
+}
+
+/**
+ * Envía los issues en lotes al endpoint de Agile indicado.
+ *
+ * Los endpoints de mover aplican cada petición entera o ninguna, así que un
+ * lote que falle no deshace los anteriores. Se informa lote a lote en vez de
+ * propagar el primer error: quien reintentase a ciegas volvería a mover issues
+ * que ya están donde se pedía.
+ */
+async function postInBatches(
+    path: string,
+    issues: string[],
+): Promise<BatchOutcome> {
+    const client = createJiraClient();
+
+    const moved: string[] = [];
+    const failed: BatchOutcome['failed'] = [];
+
+    for (let index = 0; index < issues.length; index += MOVE_BATCH_SIZE) {
+        const batch = issues.slice(index, index + MOVE_BATCH_SIZE);
+
+        try {
+            await client.post(path, { issues: batch });
+
+            moved.push(...batch);
+        } catch (error) {
+            failed.push({ issues: batch, error: describeError(error) });
+        }
+    }
+
+    return { moved, failed };
+}
+
 /**
  * Mueve issues a un sprint.
  *
@@ -381,28 +419,10 @@ export async function moveIssuesToSprint(
             );
         }
 
-        const client = createJiraClient();
-
-        const moved: string[] = [];
-        const failed: JiraSprintMoveResult['failed'] = [];
-
-        // El endpoint aplica cada petición entera o ninguna, así que un lote que
-        // falle no deshace los anteriores. Se informa lote a lote en vez de
-        // propagar el primer error: quien reintentase a ciegas volvería a mover
-        // issues que ya están en el sprint.
-        for (let index = 0; index < issues.length; index += MOVE_BATCH_SIZE) {
-            const batch = issues.slice(index, index + MOVE_BATCH_SIZE);
-
-            try {
-                await client.post(`/rest/agile/1.0/sprint/${target.id}/issue`, {
-                    issues: batch,
-                });
-
-                moved.push(...batch);
-            } catch (error) {
-                failed.push({ issues: batch, error: describeError(error) });
-            }
-        }
+        const { moved, failed } = await postInBatches(
+            `/rest/agile/1.0/sprint/${target.id}/issue`,
+            issues,
+        );
 
         if (moved.length === 0) {
             throw new Error(
@@ -418,6 +438,46 @@ export async function moveIssuesToSprint(
                 name: target.name,
                 state: target.state,
             },
+            requested: issues.length,
+            moved,
+            ...(failed.length > 0 && { failed }),
+        };
+    } catch (error) {
+        handleJiraError(error);
+    }
+}
+
+/**
+ * Devuelve issues al backlog, sacándolos del sprint activo o futuro en que
+ * estén.
+ *
+ * Es la operación inversa de `moveIssuesToSprint` y por eso no comparte su
+ * herramienta: aceptar un sprint llamado «backlog» chocaría con un sprint que
+ * de verdad se llamase así. Los sprints cerrados no se tocan: forman parte del
+ * historial del issue, y Jira no los quita.
+ */
+export async function moveIssuesToBacklog(
+    issues: string[],
+): Promise<JiraBacklogMoveResult> {
+    try {
+        if (issues.length === 0) {
+            throw new Error('No se ha indicado ningún issue que mover.');
+        }
+
+        const { moved, failed } = await postInBatches(
+            '/rest/agile/1.0/backlog/issue',
+            issues,
+        );
+
+        if (moved.length === 0) {
+            throw new Error(
+                `No se ha devuelto ningún issue al backlog: ${failed
+                    .map((batch) => batch.error)
+                    .join('; ')}`,
+            );
+        }
+
+        return {
             requested: issues.length,
             moved,
             ...(failed.length > 0 && { failed }),

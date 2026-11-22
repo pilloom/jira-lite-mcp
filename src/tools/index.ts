@@ -14,11 +14,13 @@ import { listProjectsTool } from './list-projects.js';
 import { projectSummaryTool } from './project-summary.js';
 import { explainIssueTool } from './explain-issue.js';
 import { addCommentTool } from './add-comment.js';
+import { updateCommentTool } from './update-comment.js';
 import { addWorklogTool } from './add-worklog.js';
 import { getWorklogTool } from './get-worklog.js';
 import { deleteTool } from './delete.js';
 import { createSprintTool } from './create-sprint.js';
 import { moveToSprintTool } from './move-to-sprint.js';
+import { moveToBacklogTool } from './move-to-backlog.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -150,6 +152,15 @@ export function registerTools(server: McpServer) {
     );
 
     server.registerTool(
+        updateCommentTool.name,
+        {
+            description: updateCommentTool.description,
+            inputSchema: updateCommentTool.inputSchema,
+        },
+        async (args) => updateCommentTool.handler(args),
+    );
+
+    server.registerTool(
         addWorklogTool.name,
         {
             description: addWorklogTool.description,
@@ -192,5 +203,14 @@ export function registerTools(server: McpServer) {
             inputSchema: moveToSprintTool.inputSchema,
         },
         async (args) => moveToSprintTool.handler(args),
+    );
+
+    server.registerTool(
+        moveToBacklogTool.name,
+        {
+            description: moveToBacklogTool.description,
+            inputSchema: moveToBacklogTool.inputSchema,
+        },
+        async (args) => moveToBacklogTool.handler(args),
     );
 }
