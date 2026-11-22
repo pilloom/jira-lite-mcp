@@ -81,6 +81,7 @@ export interface JiraCommentResult {
 }
 
 export interface JiraCommentUpdateResult extends JiraCommentResult {
+    /** Fecha y hora de la edición, tal como la da Jira. */
     updated: string;
 }
 
@@ -134,6 +135,12 @@ export interface JiraLinkedIssue extends JiraSubtask {
     relation: string;
     /** Identificador del enlace, necesario para eliminarlo. */
     linkId: string;
+    /**
+     * Otros enlaces que se leen igual —el mismo par enlazado dos veces— y que
+     * se muestran en esta misma entrada. Para quitar el duplicado se borra uno
+     * de estos; el par sigue enlazado por `linkId`.
+     */
+    duplicateLinkIds?: string[];
 }
 
 export interface JiraIssueComment {

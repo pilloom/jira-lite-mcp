@@ -10,6 +10,30 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.13.1 — 2026-11-22
+
+### `jira_explain_issue` escondía un enlace repetido
+
+Dos issues enlazados dos veces con una relación simétrica —LAN-2059 y LAN-2590,
+con «Relates» en cada sentido— se mostraban en una sola entrada, como hasta
+ahora, pero **el identificador del segundo enlace se perdía**: el duplicado no
+se veía y no había forma de saber qué enlace borrar para quitarlo. Solo
+`jira_get_issue` con `fields: ["issuelinks"]` enseñaba los dos.
+
+La entrada sigue siendo una, y ahora lleva `duplicateLinkIds` con los otros
+enlaces que se leen igual. Para quitar el duplicado se borra uno de esos con
+`jira_delete`; el par sigue enlazado por `linkId`.
+
+### `jira_update_comment` no dejaba ver que la edición había entrado
+
+`updated` era solo la fecha, igual que `created` cuando se edita el mismo día.
+Ahora lleva fecha y hora.
+
+La descripción de `jira_update_issue` daba a entender que la respuesta trae
+siempre el tipo y el padre: trae solo el que se ha cambiado.
+
+---
+
 ## 1.13.0 — 2026-11-22
 
 ### Tres cambios que obligaban a ir a la web de Jira
