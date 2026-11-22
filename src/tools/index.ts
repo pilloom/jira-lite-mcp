@@ -14,6 +14,7 @@ import { listProjectsTool } from './list-projects.js';
 import { projectSummaryTool } from './project-summary.js';
 import { explainIssueTool } from './explain-issue.js';
 import { addCommentTool } from './add-comment.js';
+import { updateCommentTool } from './update-comment.js';
 import { addWorklogTool } from './add-worklog.js';
 import { getWorklogTool } from './get-worklog.js';
 import { deleteTool } from './delete.js';
@@ -148,6 +149,15 @@ export function registerTools(server: McpServer) {
             inputSchema: addCommentTool.inputSchema,
         },
         async (args) => addCommentTool.handler(args),
+    );
+
+    server.registerTool(
+        updateCommentTool.name,
+        {
+            description: updateCommentTool.description,
+            inputSchema: updateCommentTool.inputSchema,
+        },
+        async (args) => updateCommentTool.handler(args),
     );
 
     server.registerTool(

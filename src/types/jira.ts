@@ -80,6 +80,10 @@ export interface JiraCommentResult {
     created: string;
 }
 
+export interface JiraCommentUpdateResult extends JiraCommentResult {
+    updated: string;
+}
+
 export interface JiraWorklogEntry {
     id: string;
     author: string;
