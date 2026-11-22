@@ -114,9 +114,11 @@ export async function explainIssue(
 
         // Jira admite enlazar el mismo par de issues en ambos sentidos. Con
         // una relación simétrica como «relates to» eso produce dos entradas
-        // que se leen igual, así que se colapsan en una.
+        // que se leen igual, así que se colapsan en una. El identificador del
+        // repetido se conserva en duplicateLinkIds: sin él, el duplicado no se
+        // veía y no había forma de saber qué enlace borrar para quitarlo.
         const links: JiraLinkedIssue[] = [];
-        const seenLinks = new Set<string>();
+        const seenLinks = new Map<string, JiraLinkedIssue>();
 
         for (const link of fields.issuelinks ?? []) {
             const related = link.outwardIssue ?? link.inwardIssue;
@@ -131,19 +133,25 @@ export async function explainIssue(
 
             const signature = `${relation}::${related.key}`;
 
-            if (seenLinks.has(signature)) {
+            const seen = seenLinks.get(signature);
+
+            if (seen) {
+                seen.duplicateLinkIds = [...(seen.duplicateLinkIds ?? []), link.id];
+
                 continue;
             }
 
-            seenLinks.add(signature);
-
-            links.push({
+            const entry: JiraLinkedIssue = {
                 linkId: link.id,
                 relation,
                 key: related.key,
                 summary: related.fields.summary,
                 status: related.fields.status.name,
-            });
+            };
+
+            seenLinks.set(signature, entry);
+
+            links.push(entry);
         }
 
         const allComments = fields.comment?.comments ?? [];

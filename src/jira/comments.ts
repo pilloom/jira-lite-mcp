@@ -61,7 +61,9 @@ export async function updateComment(
             key: issueKey,
             id: response.data.id,
             created: response.data.created.slice(0, 10),
-            updated: response.data.updated.slice(0, 10),
+            // Con hora: la edición suele llegar el mismo día que el comentario,
+            // y solo con la fecha no se distinguía de la creación.
+            updated: response.data.updated,
         };
     } catch (error) {
         handleJiraError(error);
