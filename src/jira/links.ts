@@ -15,6 +15,16 @@ interface JiraApiLinkTypesResponse {
     issueLinkTypes: JiraApiLinkType[];
 }
 
+interface JiraApiIssueLinks {
+    fields: {
+        issuelinks?: Array<{
+            id: string;
+            type: { name: string };
+            outwardIssue?: { key: string };
+        }>;
+    };
+}
+
 interface ResolvedRelation {
     type: JiraApiLinkType;
     /** Si la relación indicada es la inversa, los issues se envían al revés. */
@@ -96,17 +106,53 @@ export async function linkIssues(
             ? [targetKey, issueKey]
             : [issueKey, targetKey];
 
+        // Jira responde 201 sin cuerpo tanto si crea el enlace como si ya
+        // existía uno igual —mismo tipo y mismo sentido—, en cuyo caso no
+        // crea nada. Para que la respuesta diga qué ha pasado, y con qué
+        // identificador, se leen los enlaces del issue de origen antes y
+        // después. El sentido contrario es otro enlace para Jira y sí se crea.
+        const findLinkIds = async (): Promise<string[]> => {
+            const issue = await client.get<JiraApiIssueLinks>(
+                `/rest/api/3/issue/${inward}`,
+                { params: { fields: 'issuelinks' } },
+            );
+
+            return (issue.data.fields.issuelinks ?? [])
+                .filter(
+                    (link) =>
+                        link.type.name === resolved.type.name &&
+                        link.outwardIssue?.key.toUpperCase() ===
+                            outward.toUpperCase(),
+                )
+                .map((link) => link.id);
+        };
+
+        const base = {
+            from: inward,
+            relation: resolved.type.outward,
+            to: outward,
+        };
+
+        const existing = await findLinkIds();
+
+        if (existing.length > 0) {
+            return {
+                ...base,
+                created: false,
+                linkId: existing[0],
+                note: 'Ya existía un enlace igual, con el mismo tipo y el mismo sentido: no se ha creado otro.',
+            };
+        }
+
         await client.post('/rest/api/3/issueLink', {
             type: { name: resolved.type.name },
             inwardIssue: { key: inward },
             outwardIssue: { key: outward },
         });
 
-        return {
-            from: inward,
-            relation: resolved.type.outward,
-            to: outward,
-        };
+        const after = await findLinkIds();
+
+        return { ...base, created: true, linkId: after[0] };
     } catch (error) {
         handleJiraError(error);
     }

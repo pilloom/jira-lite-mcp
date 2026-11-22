@@ -6,7 +6,7 @@ export const linkIssuesTool = {
     name: 'jira_link_issues',
 
     description:
-        'Enlaza dos issues de Jira. La relación se indica tal como se enuncia, desde el primer issue hacia el segundo: "blocks", "is blocked by", "relates to", "duplicates". Se resuelve contra los tipos de enlace de la instancia y, si no existe, la respuesta enumera las relaciones posibles.',
+        'Enlaza dos issues de Jira. La relación se indica tal como se enuncia, desde el primer issue hacia el segundo: "blocks", "is blocked by", "relates to", "duplicates". Se resuelve contra los tipos de enlace de la instancia y, si no existe, la respuesta enumera las relaciones posibles. La respuesta trae el linkId del enlace y created: si ya había uno igual —mismo tipo y mismo sentido—, no se crea otro y created es false.',
 
     inputSchema: z.strictObject({
         issueKey: z

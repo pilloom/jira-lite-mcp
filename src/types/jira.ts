@@ -364,6 +364,11 @@ export interface JiraLinkResult {
     from: string;
     relation: string;
     to: string;
+    /** false si ya existía un enlace igual y no se ha creado otro. */
+    created: boolean;
+    /** Identificador del enlace, para jira_delete. Falta solo si Jira no lo devuelve al releer. */
+    linkId?: string;
+    note?: string;
 }
 
 export interface JiraBoard {
