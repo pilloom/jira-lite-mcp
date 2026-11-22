@@ -10,6 +10,22 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.13.2 — 2026-11-22
+
+### `jira_link_issues` decía haber creado un enlace que Jira había ignorado
+
+Pedir un enlace que ya existe —mismo tipo y mismo sentido, por ejemplo
+LAN-3184 «relates to» LAN-3179 por segunda vez— devolvía la misma respuesta
+que un alta real, pero Jira no creaba nada: contesta igual en los dos casos.
+La respuesta tampoco traía el identificador del enlace.
+
+Ahora la respuesta lleva `created` y `linkId`. Si ya había un enlace igual, no
+se pide otro: `created` es `false`, `linkId` es el del existente y `note` lo
+explica. El sentido contrario es otro enlace para Jira y se sigue creando; para
+quitarlo si sobra, `jira_explain_issue` lo marca en `duplicateLinkIds`.
+
+---
+
 ## 1.13.1 — 2026-11-22
 
 ### `jira_explain_issue` escondía un enlace repetido
