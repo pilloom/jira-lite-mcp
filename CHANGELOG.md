@@ -10,6 +10,44 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.14.0 — 2026-11-24
+
+### `jira_move_issues`: mover issues a otro proyecto
+
+Hasta ahora, llevar una épica con sus historias y subtareas a otro proyecto
+había que hacerlo desde la web, con «Cambiar en lote». La herramienta nueva lo
+hace en dos pasos:
+
+- `mode: "plan"` no cambia nada. Reúne los issues con sus hijos, dice el tipo
+  y el estado de cada uno en el destino, los campos con contenido que el destino
+  no admite y los permisos que faltan, y devuelve un `planId` si no hay
+  bloqueos.
+- `mode: "execute"`, con la misma entrada y ese `planId`, repite las
+  comprobaciones, copia a la descripción lo que se perdería
+  (`preserveLostFields`), mueve y verifica cada issue.
+
+Conviene saber:
+
+- **Jira no deshace un movimiento**, y no mueve una épica y sus hijos en la
+  misma petición. `execute` va por fases y se detiene al primer fallo; la
+  respuesta dice qué se movió (clave vieja → nueva) y qué no. Repetir el plan
+  continúa desde ahí.
+- Un tipo o un estado sin equivalente es un bloqueo: se resuelve con
+  `typeMapping` o `statusMapping`, nunca se adivina.
+- Los campos se comparan por identificador. Un campo del destino que se llama
+  igual pero es otro no recibe el contenido, y el plan lo avisa.
+- Hace falta el permiso global «Cambio en lote», además de mover en el origen y
+  crear en el destino. Escribir la descripción sin avisar a los observadores
+  exige administrar el proyecto de origen; si no, `notify: true` o
+  `preserveLostFields: false`.
+- Solo entre proyectos de la misma instancia.
+
+**Sin probar todavía moviendo de verdad.** El plan se ha probado contra una
+instancia real; `execute` no. Antes de un lote, mover una sola tarea de prueba,
+y después una épica pequeña con una historia y una subtarea.
+
+---
+
 ## 1.13.2 — 2026-11-22
 
 ### `jira_link_issues` decía haber creado un enlace que Jira había ignorado
