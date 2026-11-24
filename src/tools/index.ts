@@ -21,6 +21,7 @@ import { deleteTool } from './delete.js';
 import { createSprintTool } from './create-sprint.js';
 import { moveToSprintTool } from './move-to-sprint.js';
 import { moveToBacklogTool } from './move-to-backlog.js';
+import { moveIssuesTool } from './move-issues.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -212,5 +213,14 @@ export function registerTools(server: McpServer) {
             inputSchema: moveToBacklogTool.inputSchema,
         },
         async (args) => moveToBacklogTool.handler(args),
+    );
+
+    server.registerTool(
+        moveIssuesTool.name,
+        {
+            description: moveIssuesTool.description,
+            inputSchema: moveIssuesTool.inputSchema,
+        },
+        async (args, extra) => moveIssuesTool.handler(args, extra),
     );
 }
