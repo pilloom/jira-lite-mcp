@@ -149,6 +149,7 @@ personalizados a incluir, por su nombre visible o su identificador.
 | `jira_move_to_sprint` | Mover issues a un sprint |
 | `jira_move_to_backlog` | Devolver issues al backlog |
 | `jira_delete` | Eliminar un comentario, un registro de tiempo o un enlace |
+| `jira_move_issues` | Mover issues, con sus hijos, a otro proyecto de la misma instancia: primero un plan, después la ejecución |
 
 ---
 
@@ -333,6 +334,40 @@ porque un issue de otro proyecto no debe tumbar la página entera.
 **Las búsquedas no devuelven el total de coincidencias.** El endpoint de Jira pagina y no
 informa del total, así que `jira_search` devuelve cuántos issues trae (`count`) y si quedan más
 (`hasMore`).
+
+**Mover issues a otro proyecto se hace en dos pasos con `jira_move_issues`.** Primero
+`mode: "plan"`, que no cambia nada: reúne los issues con sus hijos —una épica trae sus historias
+y tareas, y estas sus subtareas—, dice el tipo y el estado que tendrá cada uno en el destino,
+los campos con contenido que el destino no admite y si faltan permisos. Si no hay bloqueos
+devuelve un `planId`, y solo con él `mode: "execute"` mueve algo.
+
+```json
+{ "issueKeys": ["SIATY-1973"], "targetProject": "GS", "typeMapping": { "Historia": "Story" } }
+```
+
+Un tipo o un estado sin equivalente en el destino es un **bloqueo**, no se adivina: se
+resuelve con `typeMapping` o `statusMapping`. La API de Jira sabe resolverlo por su cuenta
+—mandando el issue al estado inicial, o la subtarea al primer tipo que encuentre— y
+precisamente por eso se le prohíbe. También bloquean un campo obligatorio del destino que está
+vacío y una subtarea cuyo padre no se mueve.
+
+Los campos se comparan **por identificador**: si el destino tiene un «Criterios de aceptación»
+con otro `customfield_`, es otro campo y el contenido no pasa, y el plan lo dice. Con
+`preserveLostFields` (por defecto) ese contenido se añade al final de la descripción antes de
+mover, bajo un título por campo; un reintento no lo repite.
+
+⚠️ **Jira no deshace un movimiento.** No mueve una épica y sus hijos en la misma petición, así
+que `execute` va por fases —la épica, después los hijos—, espera a que termine cada una y se
+detiene al primer fallo para no dejar hijos separados de su padre. La respuesta dice qué quedó
+en el destino (clave vieja → nueva, verificando proyecto, tipo, estado y padre) y qué no.
+Repetir el plan con las mismas claves continúa desde ahí: lo ya movido aparece en
+`alreadyInTarget`.
+
+El `planId` vive en el proceso del servidor: caduca a los 30 minutos y no sobrevive a reiniciar
+la sesión. También deja de valer si cambia la entrada o lo que hay en Jira —un estado, un hijo
+nuevo—: `execute` repite todas las comprobaciones y se niega si el plan ya no es el aprobado.
+No avisa por correo salvo con `notify: true`; escribir la descripción sin avisar exige
+administrar el proyecto de origen, y sin ese permiso el plan lo da como bloqueo.
 
 ---
 
