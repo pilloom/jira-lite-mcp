@@ -22,6 +22,7 @@ import { createSprintTool } from './create-sprint.js';
 import { moveToSprintTool } from './move-to-sprint.js';
 import { moveToBacklogTool } from './move-to-backlog.js';
 import { moveIssuesTool } from './move-issues.js';
+import { copyIssuesTool } from './copy-issues.js';
 
 export function registerTools(server: McpServer) {
     server.registerTool(
@@ -222,5 +223,14 @@ export function registerTools(server: McpServer) {
             inputSchema: moveIssuesTool.inputSchema,
         },
         async (args, extra) => moveIssuesTool.handler(args, extra),
+    );
+
+    server.registerTool(
+        copyIssuesTool.name,
+        {
+            description: copyIssuesTool.description,
+            inputSchema: copyIssuesTool.inputSchema,
+        },
+        async (args, extra) => copyIssuesTool.handler(args, extra),
     );
 }

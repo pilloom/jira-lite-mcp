@@ -150,6 +150,7 @@ personalizados a incluir, por su nombre visible o su identificador.
 | `jira_move_to_backlog` | Devolver issues al backlog |
 | `jira_delete` | Eliminar un comentario, un registro de tiempo o un enlace |
 | `jira_move_issues` | Mover issues, con sus hijos, a otro proyecto de la misma instancia: primero un plan, después la ejecución |
+| `jira_copy_issues` | Copiar issues, con sus hijos, a otro proyecto de la misma instancia sin tocar los originales: primero un plan, después la ejecución |
 
 ---
 
@@ -368,6 +369,42 @@ la sesión. También deja de valer si cambia la entrada o lo que hay en Jira —
 nuevo—: `execute` repite todas las comprobaciones y se niega si el plan ya no es el aprobado.
 No avisa por correo salvo con `notify: true`; escribir la descripción sin avisar exige
 administrar el proyecto de origen, y sin ese permiso el plan lo da como bloqueo.
+
+**Copiar issues a otro proyecto se hace igual, con `jira_copy_issues`.** Los originales no se
+tocan: cada copia es un alta nueva, y la jerarquía se rehace entre las copias —la épica, después
+sus historias colgando de la copia de la épica, después las subtareas—. El plan dice el tipo y el
+estado de cada copia, los campos que el destino no admite, los obligatorios que quedarían vacíos,
+lo que se copiaría además de los campos y los permisos que faltan.
+
+```json
+{ "issueKeys": ["SIATY-1973"], "targetProject": "GS", "targetStatus": "Tareas por hacer", "copy": ["labels", "comments"] }
+```
+
+- **Estado.** Con `targetStatus` todas las copias quedan en ese; si no, en el del original, con
+  `statusMapping` para los que no existen en el destino. Una copia nace en el estado inicial y
+  se lleva al pedido con transiciones. Si se puede leer el flujo del destino (hace falta
+  administrar el proyecto) el plan ya dice el camino, o que no lo hay; si no, al ejecutar se busca
+  una transición directa y, si no existe, la copia se queda en el estado inicial y la respuesta lo
+  dice.
+- **Qué se copia.** Los campos que el destino admite, por identificador; el texto rico, tal cual
+  y con todas las casillas sin marcar. Además, lo que diga `copy`: `labels` (por defecto),
+  `assignee`, `comments`, `attachments` y `worklogs`. Los comentarios y los registros de tiempo
+  empiezan con su autor y su fecha originales, porque Jira los atribuye a quien copia. Los
+  registros de tiempo van fuera por defecto para no contar dos veces las horas.
+- **Enlaces.** Cada copia queda enlazada a su original con «Cloners», o «Relates» si la instancia
+  no lo tiene. Los enlaces entre issues del lote se rehacen entre las copias, y los que van a
+  issues de fuera, hacia esos mismos issues.
+- **Si algo falla**, se para y dice qué se creó y qué no. Repetir el plan con las mismas claves
+  reconoce las copias ya hechas por su enlace con el original y por su resumen, y continúa sin
+  duplicarlas: las crea solo para los originales que no tienen copia, y completa lo que les falte
+  a las demás. Por eso el enlace se crea aunque `linkToOriginal` sea `false`; en ese caso se
+  quita al terminar bien.
+- **Avisos.** La API de Jira no deja silenciar los avisos de alta, de comentario ni de
+  transición: llegan según el esquema de notificaciones del destino. `notify` solo decide los
+  avisos de los registros de tiempo.
+
+Un original con nivel de seguridad que el destino no admite bloquea el plan: su copia la vería más
+gente. Un hijo cuyo padre no se copia queda sin padre, y una subtarea en ese caso es un bloqueo.
 
 ---
 
