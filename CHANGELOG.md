@@ -10,6 +10,41 @@ hay compilado, o si quedó por detrás.
 
 ---
 
+## 1.15.0 — 2026-11-24
+
+### `jira_copy_issues`: copiar issues a otro proyecto
+
+Para duplicar épicas, historias, tareas y subtareas en otro proyecto sin tocar
+los originales. Hacerlo a mano con `jira_get_issue` y `jira_create_issue`
+perdía la jerarquía, los enlaces y la relación con el original. Va en dos pasos,
+como `jira_move_issues`:
+
+- `mode: "plan"` no cambia nada. Dice qué se copiaría, el tipo y el estado de
+  cada copia, los campos que el destino no admite, los obligatorios que
+  quedarían vacíos y los permisos que faltan, y da un `planId` si no hay
+  bloqueos.
+- `mode: "execute"`, con la misma entrada y ese `planId`, crea las copias
+  nivel a nivel, cada una colgando de la copia de su padre, y devuelve la tabla
+  original → copia con la verificación de cada una.
+
+Conviene saber:
+
+- El texto rico se copia tal cual. Las casillas de los criterios de aceptación
+  llegan como casillas, todas sin marcar.
+- Cada copia queda enlazada con su original («Cloners», o «Relates»). Repetir
+  el plan tras un fallo reconoce las copias ya hechas y no las duplica.
+- `copy` elige qué más se copia: `labels` (por defecto), `assignee`,
+  `comments`, `attachments` y `worklogs`. Los comentarios y los registros de
+  tiempo llevan delante su autor y su fecha originales.
+- La API de Jira no deja silenciar los avisos de alta, de comentario ni de
+  transición. `notify` solo decide los de los registros de tiempo.
+
+**Sin probar todavía ejecutando de verdad.** El plan se ha probado contra una
+instancia real; `execute` no. Antes de un lote, copiar una épica pequeña con
+una historia y una subtarea, y revisar la verificación.
+
+---
+
 ## 1.14.0 — 2026-11-24
 
 ### `jira_move_issues`: mover issues a otro proyecto
