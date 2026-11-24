@@ -52,7 +52,7 @@ export type MoveProgress = (
     total?: number,
 ) => Promise<void>;
 
-interface RawIssue {
+export interface RawIssue {
     id: string;
     key: string;
     fields: {
@@ -71,14 +71,14 @@ interface RawIssue {
     };
 }
 
-interface TargetIssueType {
+export interface TargetIssueType {
     id: string;
     name: string;
     subtask: boolean;
     hierarchyLevel?: number;
 }
 
-interface TargetProject {
+export interface TargetProject {
     id: string;
     key: string;
     name: string;
@@ -119,7 +119,7 @@ interface PlannedIssue {
     alreadyInTarget: boolean;
 }
 
-interface Blocker {
+export interface Blocker {
     key?: string;
     reason: string;
 }
@@ -192,7 +192,7 @@ const NOT_COMPARED = new Set([
  * Campos que pertenecen al proyecto de origen: sus valores —versiones,
  * componentes— no existen en el destino aunque el campo sí.
  */
-const PROJECT_SCOPED = new Set(['fixVersions', 'versions', 'components']);
+export const PROJECT_SCOPED = new Set(['fixVersions', 'versions', 'components']);
 
 /**
  * Campos personalizados que mantiene Jira, no quien escribe el issue: el
@@ -200,7 +200,7 @@ const PROJECT_SCOPED = new Set(['fixVersions', 'versions', 'components']);
  * heredados de las épicas clásicas, que hoy se derivan del propio issue.
  * Copiarlos a la descripción solo añadiría ruido.
  */
-const MACHINE_FIELD_TYPES = new Set([
+export const MACHINE_FIELD_TYPES = new Set([
     'gh-lexo-rank',
     'devsummarycf',
     'vulnerabilitycf',
@@ -214,7 +214,7 @@ const MACHINE_FIELD_TYPES = new Set([
 
 const issuedPlans = new Map<string, number>();
 
-function chunk<T>(items: T[], size: number): T[][] {
+export function chunk<T>(items: T[], size: number): T[][] {
     const chunks: T[][] = [];
 
     for (let index = 0; index < items.length; index += size) {
@@ -224,11 +224,11 @@ function chunk<T>(items: T[], size: number): T[][] {
     return chunks;
 }
 
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isEmpty(value: unknown): boolean {
+export function isEmpty(value: unknown): boolean {
     if (value === null || value === undefined) {
         return true;
     }
@@ -254,7 +254,7 @@ function isEmpty(value: unknown): boolean {
     return false;
 }
 
-function toText(value: unknown): string {
+export function toText(value: unknown): string {
     if (value === null || value === undefined) {
         return '';
     }
@@ -287,7 +287,7 @@ function toText(value: unknown): string {
     return JSON.stringify(value);
 }
 
-function lookup(
+export function lookup(
     mapping: Record<string, string> | undefined,
     ...candidates: string[]
 ): string | undefined {
@@ -306,7 +306,7 @@ function lookup(
 
 // --- Lecturas -------------------------------------------------------------
 
-async function fetchIssues(
+export async function fetchIssues(
     client: AxiosInstance,
     idsOrKeys: string[],
 ): Promise<{ issues: RawIssue[]; missing: string[] }> {
@@ -371,7 +371,7 @@ async function searchChildren(
  * Reúne los issues pedidos y, si se piden los hijos, desciende nivel a nivel:
  * una épica trae sus historias y tareas, y estas sus subtareas.
  */
-async function collectIssues(
+export async function collectIssues(
     client: AxiosInstance,
     keys: string[],
     includeChildren: boolean,
@@ -404,7 +404,7 @@ async function collectIssues(
     return { issues: [...collected.values()], missing };
 }
 
-async function fetchTargetProject(
+export async function fetchTargetProject(
     client: AxiosInstance,
     key: string,
 ): Promise<TargetProject> {
@@ -427,7 +427,7 @@ async function fetchTargetProject(
     };
 }
 
-async function fetchTargetStatuses(
+export async function fetchTargetStatuses(
     client: AxiosInstance,
     key: string,
 ): Promise<Map<string, Array<{ id: string; name: string }>>> {
@@ -488,7 +488,7 @@ async function fetchCreateFields(
     return fields;
 }
 
-async function hasPermissions(
+export async function hasPermissions(
     client: AxiosInstance,
     permissions: string[],
     projectKey?: string,
@@ -512,10 +512,11 @@ async function hasPermissions(
 
 // --- Plan -----------------------------------------------------------------
 
-function resolveType(
+export function resolveType(
     issue: RawIssue,
     target: TargetProject,
     typeMapping: Record<string, string> | undefined,
+    action = 'mover',
 ): { type?: TargetIssueType; blocker?: string } {
     const source = issue.fields.issuetype;
 
@@ -549,7 +550,7 @@ function resolveType(
 
     if (!sameLevel) {
         return {
-            blocker: `"${source.name}" y "${type.name}" (${target.key}) no son del mismo nivel: mover cambiaría la jerarquía. Elegir en typeMapping un tipo del mismo nivel.`,
+            blocker: `"${source.name}" y "${type.name}" (${target.key}) no son del mismo nivel: ${action} cambiaría la jerarquía. Elegir en typeMapping un tipo del mismo nivel.`,
         };
     }
 
